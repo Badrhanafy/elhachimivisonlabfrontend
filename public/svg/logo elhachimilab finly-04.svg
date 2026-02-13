@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1080 1080">
+  <!-- Generator: Adobe Illustrator 29.8.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 2)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #011b88;
+      }
+
+      .st1, .st2, .st3 {
+        fill: #fff;
+      }
+
+      .st2 {
+        font-family: GeneralSans-Light, 'General Sans';
+        font-size: 31.34px;
+        font-weight: 300;
+      }
+
+      .st3 {
+        font-family: AGRESSIVE, AGRESSIVE;
+        font-size: 81.92px;
+      }
+    </style>
+  </defs>
+  <rect class="st0" x="-550.85" y="-1136.16" width="3611.87" height="3611.87"/>
+  <g>
+    <path class="st1" d="M453.56,490.13c-36.14-17.46-79.34,3.67-80.79,45.15-81.04,10.36-145.42-61.7-123.18-141.61,18.75-67.37,95.73-96.44,158.14-69.69,65.14,27.92,83.96,108.43,45.83,166.15ZM352.37,366.92c-77.4,8.52-62.34,131.74,19.57,115.83,69.16-13.44,56.17-124.16-19.57-115.83Z"/>
+    <path class="st1" d="M428.1,503.94c38.5.85,43.47,56.12,9.89,65.07-53.74,14.33-61.95-66.22-9.89-65.07Z"/>
+    <polygon class="st1" points="574.47 314.11 574.47 399 659.36 399 659.36 314.11 745.21 314.11 745.21 570.72 659.36 570.72 659.36 484.86 574.47 484.86 574.47 570.72 488.61 570.72 488.61 484.86 573.5 484.86 573.5 399.97 488.61 399.97 488.61 314.11 574.47 314.11"/>
+    <path class="st1" d="M756.57,419.3l61.55-34.95c8.75-2.26,17.14,3.71,17.94,12.59,1.38,15.38-.62,31.75-.72,47.11-.13,20.08,1.79,44.29.06,63.76-.89,9.95-10.85,14.71-19.71,11.05l-58.88-34.64-.23-64.92Z"/>
+  </g>
+  <text class="st2" transform="translate(253.9 765.89)"><tspan x="0" y="0">Every shot has a story, every goal has a meaning</tspan></text>
+  <text class="st3" transform="translate(247.06 725.49)"><tspan x="0" y="0">Visionlab</tspan></text>
+  <text class="st3" transform="translate(243.46 650.78)"><tspan x="0" y="0">Elhachimi </tspan></text>
+</svg>
