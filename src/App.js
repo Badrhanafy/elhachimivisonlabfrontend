@@ -13,6 +13,9 @@ import ServicesManage from './pages/ServicesManage';
 import Photography from './pages/Photography';
 import ImageGallery from './pages/ClientDownload';
 import SportAnalysis from './pages/SportAnalysis';
+import Test from './pages/test';
+import DataAnalytics from './pages/admin/DataAnalytics';
+import About from './pages/About';
 
 // lazy admin
 const AdminLayout = React.lazy(() => import('./components/layout/AdminLayout'));
@@ -33,14 +36,16 @@ function App() {
         <Routes>
           {/* Public */}
           <Route path="/" element={<Homepage isOpen={isModalOpen}  closeModal={() => setIsModalOpen(false)} />} />
-          <Route path="/works" element={<Works />} />
+         {/*  <Route path="/works" element={<Works />} /> */}
           <Route path="/analysis" element={<SportAnalysis />} />
+          <Route path="/test" element={<Test />} />
 
           {/* Admin */}
           <Route
             path="/admin"
             element={<AdminLayout  />}
           >
+            <Route path='charts' element={<DataAnalytics/>}/>
             <Route index element={<Dashboard />} />
             <Route path="reservations" element={<Reservations />} />
             <Route path="reservations/:id" element={<ReservationDetail />} />
@@ -53,7 +58,8 @@ function App() {
           {/* Global fallback */}
           {/* <Route path="*" element={<Navigate to="/" />} /> */}
           <Route path='/photography' element={<Photography/>}/>
-          <Route path='/:reservationsid/images' element={<ImageGallery/>}/>
+          <Route path='/:username/:id/results' element={<ImageGallery/>}/>
+          <Route path='/About' element={<About/>}/>
         </Routes>
 
       </React.Suspense>

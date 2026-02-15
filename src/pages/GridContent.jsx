@@ -2,8 +2,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { FiPlay } from 'react-icons/fi';
 import videodata from '../../src/videohomepage.mp4'
+import { Navigate, useNavigate } from 'react-router-dom';
 
 const GridContent = () => {
+  const navigate = useNavigate()
   return (
     <section className="relative min-h-screen py-16 bg-white flex items-center lg:py-0">
       {/* Background Elements */}
@@ -28,7 +30,7 @@ const GridContent = () => {
           
               <h1 className="titles text-4xl lg:text-5xl font-bold text-black mb-6 leading-tight">
                 Tell your story <br />
-                <span className="text-[#22c55e]">in a creative way</span>
+                <span className="text-[rgb(204,255,0)]">in a creative way</span>
               </h1>
               <p className="texts text-black/60 text-lg leading-relaxed">
               Take your game to the next level with our advanced sports video analysis service. We break down every movement, every play, and every decision to give you clear, actionable insights.
@@ -36,12 +38,13 @@ const GridContent = () => {
               
               {/* CTA Button */}
               <motion.button
+              onClick={()=>{navigate("/analysis")}}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                className="mt-8 px-8 py-4 bg-gradient-to-r from-[#22c55e] to-[#16a34a] text-white font-semibold text-lg hover:shadow-lg hover:shadow-[#22c55e]/20 transition-all flex items-center gap-3 rounded-full"
+                className="mt-8 px-8 py-4 bg-[rgb(204,255,0)] text-black font-semibold text-lg hover:shadow-lg hover:shadow-[#22c55e]/20 transition-all flex items-center gap-3 rounded-full"
               >
                 <FiPlay className="w-5 h-5" />
-                Watch Our Story
+                see more
               </motion.button>
             </div>
           </motion.div>

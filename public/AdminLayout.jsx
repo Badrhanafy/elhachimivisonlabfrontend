@@ -13,11 +13,10 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
-import { ChartScatter } from 'lucide-react';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // New state for collapse on desktop
   const location = useLocation();
 
   const navigation = [
@@ -25,11 +24,11 @@ const AdminLayout = () => {
     { name: 'Reservations', href: '/admin/reservations', icon: CalendarIcon },
     { name: 'Images', href: '/admin/images', icon: PhotoIcon },
     { name: 'Services', href: '/admin/services', icon: ClipboardDocumentCheckIcon },
-    { name: 'data', href: '/admin/charts', icon: ChartScatter },
   ];
 
   const isActive = (path) => location.pathname === path;
 
+  // Toggle collapse on desktop
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
@@ -91,29 +90,29 @@ const AdminLayout = () => {
       >
         <div className="flex flex-1 flex-col border-r border-gray-800 bg-black pt-5">
           <div className="flex flex-1 flex-col overflow-y-auto">
-            {/* Logo and toggle button */}
             <div className="flex items-center justify-between px-4">
-              <div className="flex items-center">
-                <img
-                  src={sidebarCollapsed ? "/logo2.png" : "/logo1.png"}
-                  alt="VisionLab"
-                  className={`transition-all duration-300 ${
-                    sidebarCollapsed 
-                      ? "h-4 w-4" 
-                      : "h-12 w-auto object-contain"
-                  }`}
-                />
-              </div>
-              <button
-                onClick={toggleSidebar}
-                className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-[#B8E601] transition-colors"
-              >
-                {sidebarCollapsed ? (
-                  <ChevronRightIcon className="h-5 w-5" />
-                ) : (
-                  <ChevronLeftIcon className="h-5 w-5" />
-                )}
-              </button>
+           <div className="flex items-center justify-between px-4">
+  <div className="flex items-center justify-center w-full">
+    <img
+      src={sidebarCollapsed ? "/logo2.png" : "/logo1.png"}
+      alt="Logo"
+      className={`transition-all duration-300 ${
+        sidebarCollapsed ? "h-10 w-10" : "h-12 object-contain"
+      }`}
+    />
+  </div>
+
+  <button
+    onClick={toggleSidebar}
+    className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-[#B8E601] transition-colors"
+  >
+    {sidebarCollapsed ? (
+      <ChevronRightIcon className="h-5 w-5" />
+    ) : (
+      <ChevronLeftIcon className="h-5 w-5" />
+    )}
+  </button>
+</div>
             </div>
 
             <nav className="mt-8 flex-1 space-y-2 px-3">

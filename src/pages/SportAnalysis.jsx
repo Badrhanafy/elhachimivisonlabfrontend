@@ -136,15 +136,15 @@ const SportAnalysis = () => {
       {/* Subtle Green Grid Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
-          backgroundImage: `linear-gradient(to right, #22c55e 1px, transparent 1px),
-                           linear-gradient(to bottom, #22c55e 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(to right, #ccff00 1px, transparent 1px),
+                           linear-gradient(to bottom, #ccff00 1px, transparent 1px)`,
           backgroundSize: '40px 40px'
         }} />
       </div>
 
       {/* Green Gradient Orbs - Very Subtle */}
-      <div className="absolute top-20 left-10 w-96 h-96 bg-[#22c55e]/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#16a34a]/5 rounded-full blur-3xl" />
+      <div className="absolute top-20 left-10 w-96 h-96 bg-[#ccff00]/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#ccff00]/5 rounded-full blur-3xl" />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header - Black & White with Green Accent */}
@@ -156,14 +156,14 @@ const SportAnalysis = () => {
           transition={{ duration: 0.6 }}
           className="text-center max-w-3xl mx-auto mb-20"
         >
-          <span className="text-sm uppercase tracking-[0.3em] text-[#22c55e] font-semibold">
+          <span className="text-sm uppercase tracking-[0.3em] text-[#ffff] font-semibold">
             Sport Science
           </span>
           <h2 className="text-4xl lg:text-6xl font-bold text-white mt-4 mb-6">
             Analysis{' '}
-            <span className="text-[#22c55e]">Reimagined</span>
+            <span className="text-[#ccff00]">Reimagined</span>
           </h2>
-          <div className="w-20 h-1 bg-[#22c55e] mx-auto" />
+          <div className="w-20 h-1 bg-[#ccff00] mx-auto" />
           <p className="text-xl text-gray-400 mt-6">
             Every analysis tells a unique story through dynamic layouts and immersive media
           </p>
@@ -198,9 +198,9 @@ const SportAnalysis = () => {
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center">
                       {item.media.type === 'video' ? (
-                        <FiYoutube className="w-6 h-6 text-[#22c55e]" />
+                        <FiYoutube className="w-6 h-6 text-[#ccff00]" />
                       ) : (
-                        <FiCamera className="w-6 h-6 text-[#22c55e]" />
+                        <FiCamera className="w-6 h-6 text-[#ccff00]" />
                       )}
                     </div>
                     <div className="flex gap-2">
@@ -226,7 +226,7 @@ const SportAnalysis = () => {
                   {/* Subtitle - Green */}
                   <motion.h4
                     variants={fadeInUp}
-                    className="text-xl font-semibold text-[#22c55e]"
+                    className="text-xl font-semibold text-[#ccff00]"
                   >
                     {item.subtitle}
                   </motion.h4>
@@ -252,7 +252,7 @@ const SportAnalysis = () => {
                         transition={{ delay: 0.2 + (i * 0.1) }}
                         className="text-center p-4 bg-white/5 rounded-2xl border border-white/10"
                       >
-                        <p className="text-2xl lg:text-3xl font-bold text-[#22c55e]">{value}</p>
+                        <p className="text-2xl lg:text-3xl font-bold text-[#ccff00]">{value}</p>
                         <p className="text-xs uppercase tracking-wider text-gray-400 mt-1">{key}</p>
                       </motion.div>
                     ))}
@@ -267,7 +267,7 @@ const SportAnalysis = () => {
                       variants={fadeInUp}
                       whileHover={{ scale: 1.05, x: 5 }}
                       whileTap={{ scale: 0.95 }}
-                      className="mt-4 inline-flex items-center gap-2 text-[#22c55e] hover:text-white transition-colors"
+                      className="mt-4 inline-flex items-center gap-2 text-[#ccff00] hover:text-white transition-colors"
                     >
                       <FiYoutube className="w-5 h-5" />
                       <span className="text-sm font-medium">Watch on YouTube</span>
@@ -288,7 +288,7 @@ const SportAnalysis = () => {
                   {/* Media Container - Black & White with Green Border */}
                   <div className="relative group">
                     {/* Green Border Accent */}
-                    <div className="absolute -inset-1 bg-[#22c55e] rounded-3xl opacity-20 group-hover:opacity-30 blur-md transition-all duration-500" />
+                    <div className="absolute -inset-1 bg-[#ccff00] rounded-3xl opacity-20 group-hover:opacity-30 blur-md transition-all duration-500" />
                     
                     {/* Main Media Card - Black Background */}
                     <div className="relative overflow-hidden rounded-3xl bg-black border border-white/10 aspect-video shadow-2xl">
@@ -314,7 +314,7 @@ const SportAnalysis = () => {
                             
                             {/* YouTube Brand Indicator */}
                             <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
-                              <FiYoutube className="w-4 h-4 text-[#22c55e]" />
+                              <FiYoutube className="w-4 h-4 text-[#ccff00]" />
                               <span className="text-white text-xs">YouTube</span>
                             </div>
                             
@@ -324,7 +324,7 @@ const SportAnalysis = () => {
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
                                 onClick={() => setActiveVideo(item.id)}
-                                className="w-20 h-20 rounded-full bg-[#22c55e] flex items-center justify-center cursor-pointer shadow-lg shadow-[#22c55e]/30"
+                                className="w-20 h-20 rounded-full bg-[#ccff00] flex items-center justify-center cursor-pointer shadow-lg shadow-[#ccff00]/30"
                               >
                                 <FiPlay className="w-8 h-8 text-black ml-1.5" />
                               </motion.button>
@@ -349,9 +349,9 @@ const SportAnalysis = () => {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 flex items-center justify-center">
                             {item.media.type === 'video' ? (
-                              <FiYoutube className="w-5 h-5 text-[#22c55e]" />
+                              <FiYoutube className="w-5 h-5 text-[#ccff00]" />
                             ) : (
-                              <FiCamera className="w-5 h-5 text-[#22c55e]" />
+                              <FiCamera className="w-5 h-5 text-[#ccff00]" />
                             )}
                           </div>
                           <span className="text-white/90 text-sm font-medium">
@@ -367,7 +367,7 @@ const SportAnalysis = () => {
 
               {/* Separator Line - Green (except last) */}
               {index < analysisItems.length - 1 && (
-                <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 w-32 h-px bg-gradient-to-r from-transparent via-[#22c55e] to-transparent" />
+                <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 w-32 h-px bg-gradient-to-r from-transparent via-[#ccff00] to-transparent" />
               )}
             </motion.div>
           ))}
@@ -384,8 +384,8 @@ const SportAnalysis = () => {
         >
           <div className="relative inline-block">
             {/* Green Glow */}
-            <div className="absolute inset-0 bg-[#22c55e] rounded-full blur-2xl opacity-20" />
-            <button className="relative px-12 py-5 bg-[#22c55e] text-black font-bold text-lg rounded-full hover:bg-[#16a34a] transition-all flex items-center gap-3 mx-auto group">
+            <div className="absolute inset-0 bg-[#ccff00] rounded-full blur-2xl opacity-20" />
+            <button className="relative px-12 py-5 bg-[#ccff00] text-black font-bold text-lg rounded-full hover:bg-[#b3ff00] transition-all flex items-center gap-3 mx-auto group">
               <FiAward className="w-6 h-6" />
               Explore All Analysis
               <FiArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -396,7 +396,7 @@ const SportAnalysis = () => {
         {/* Footer Credit - Minimal */}
         <div className="text-center mt-16 pt-16 border-t border-white/10">
           <p className="text-gray-500 text-sm">
-            <span className="text-[#22c55e]">●</span> Professional Sport Analysis
+            <span className="text-[#ccff00]">●</span> Professional Sport Analysis
           </p>
         </div>
       </div>

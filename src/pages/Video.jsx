@@ -157,22 +157,7 @@ const VideoSection = () => {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
         >
-          <motion.div
-            className="inline-block mb-4"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={isInView ? { opacity: 1, scale: 1 } : {}}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full backdrop-blur-md bg-white/5 border border-white/10">
-              <div className="relative flex items-center justify-center">
-                <div className="absolute w-3 h-3 bg-[#22c55e] rounded-full animate-ping opacity-75" />
-                <div className="w-2 h-2 bg-[#22c55e] rounded-full" />
-              </div>
-              <span className="text-white/90 text-sm font-medium tracking-[0.2em] uppercase">
-                Portfolio Showcase
-              </span>
-            </div>
-          </motion.div>
+          
 
           <motion.h2 
             className="text-5xl md:text-6xl lg:text-7xl font-black text-white mb-6"
@@ -185,7 +170,7 @@ const VideoSection = () => {
               <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-gradient-to-r from-[#22c55e] via-[#16a34a] to-transparent" />
             </span>
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#22c55e] via-[#16a34a] to-[#22c55e]">Excellence</span>
+            <span className="text-transparent bg-clip-text bg-[rgb(204,255,0)]">Excellence</span>
           </motion.h2>
           
           <motion.p 
@@ -460,18 +445,8 @@ const VideoSection = () => {
                 techniques to deliver unparalleled visual storytelling.
               </p>
               <div className="mt-4 pt-4 border-t border-white/10">
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>Color Accuracy</span>
-                  <span>98%</span>
-                </div>
-                <div className="h-1 bg-white/10 rounded-full mt-1 overflow-hidden">
-                  <motion.div 
-                    className="h-full bg-gradient-to-r from-[#22c55e] to-[#16a34a] rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: '98%' }}
-                    transition={{ delay: 1, duration: 1 }}
-                  />
-                </div>
+               
+               
               </div>
             </motion.div>
 

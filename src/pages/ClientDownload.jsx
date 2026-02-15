@@ -25,12 +25,15 @@ import {
   FiLock,
   FiUnlock,
   FiChevronUp,
-  FiCameraOff
+  FiCameraOff,
+  FiVideo,
+  FiFilm // added for video
 } from 'react-icons/fi';
 import bg from '../../src/Bgvideo.mp4';
 import axios from 'axios';
 import logo from '../../src/logo1.png';
 import logo2 from '../../src/logo2.png';
+
 const ImageGallery = ({ reservationId }) => {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +46,10 @@ const ImageGallery = ({ reservationId }) => {
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   
+  // New state for video
+  const [hasVideo, setHasVideo] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(null);
+
   // Extract reservationId from URL if not provided as prop
   const effectiveReservationId = reservationId || extractReservationIdFromPath();
 
@@ -63,8 +70,9 @@ const ImageGallery = ({ reservationId }) => {
 
   // API base URL
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+  const STORAGE_URL = process.env.REACT_APP_STORAGE_URL || 'http://localhost:8000/storage';
 
-  // Fetch reservation info and images
+  // Fetch reservation info and images/video
   const fetchData = useCallback(async () => {
     if (!effectiveReservationId) {
       setError('No reservation ID found');
@@ -88,7 +96,16 @@ const ImageGallery = ({ reservationId }) => {
       
       setReservationInfo(reservationData);
       
-      // Fetch images for this reservation
+      // Check if reservation has a video
+      if (reservationData.video_path) {
+        setHasVideo(true);
+        const videoFullUrl = `${STORAGE_URL}/${reservationData.video_path}`;
+        setVideoUrl(videoFullUrl);
+        setLoading(false);
+        return; // Skip fetching images
+      }
+      
+      // Fetch images for this reservation (only if no video)
       const imagesResponse = await axios.get(
         `${API_BASE}/public/reservation/${effectiveReservationId}/images`
       );
@@ -113,7 +130,7 @@ const ImageGallery = ({ reservationId }) => {
           const img = shuffled[i];
           bgImages.push(
             img.url || 
-            `${process.env.REACT_APP_STORAGE_URL || 'http://localhost:8000/storage'}/${img.path}`
+            `${STORAGE_URL}/${img.path}`
           );
         }
         setBackgroundImages(bgImages);
@@ -135,13 +152,13 @@ const ImageGallery = ({ reservationId }) => {
     } finally {
       setLoading(false);
     }
-  }, [effectiveReservationId, API_BASE]);
+  }, [effectiveReservationId, API_BASE, STORAGE_URL]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Background slideshow effect
+  // Background slideshow effect (only for images)
   useEffect(() => {
     if (backgroundImages.length > 1) {
       const interval = setInterval(() => {
@@ -161,6 +178,17 @@ const ImageGallery = ({ reservationId }) => {
 
   const togglePreview = () => {
     setShowPreview(!showPreview);
+  };
+
+  const downloadVideo = () => {
+    if (videoUrl) {
+      const link = document.createElement('a');
+      link.href = videoUrl;
+      link.download = `reservation_${effectiveReservationId}_video.mp4`; // or extract filename from path
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   if (loading) {
@@ -206,27 +234,24 @@ const ImageGallery = ({ reservationId }) => {
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden bg-gradient-to-br from-black via-gray-900 to-black">
         {/* Background images with crossfade */}
-      <AnimatePresence>
-  <div className="absolute inset-0">
-    
-    {/* Video */}
-    <video
-      autoPlay
-      loop
-      muted
-      playsInline
-      className="absolute inset-0 w-full h-full object-cover z-0"
-    >
-      <source src={bg} type="video/mp4" />
-      Your browser does not support the video tag.
-    </video>
+        <AnimatePresence>
+          <div className="absolute inset-0">
+            {/* Video */}
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover z-0"
+            >
+              <source src={bg} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
 
-    {/* Black Overlay */}
-    <div className="absolute inset-0 bg-black/80 z-10"></div>
-
-  </div>
-</AnimatePresence>
-
+            {/* Black Overlay */}
+            <div className="absolute inset-0 bg-black/80 z-10"></div>
+          </div>
+        </AnimatePresence>
 
         {/* Animated gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black opacity-80" />
@@ -282,8 +307,8 @@ const ImageGallery = ({ reservationId }) => {
             {/* Logo */}
             <div className="relative mb-6">
               <div className="absolute inset-0 bg-gradient-to-r from-[rgb(204,255,0)] to-[rgb(204,255,0)] blur-xl opacity-30" />
-              <div className="relative w-20 h-20 p-1 rounded-full  flex items-center justify-center mx-auto shadow-2xl">
-                <img src={logo2} alt="" srcset="" />
+              <div className="relative w-20 h-20 p-1 rounded-full flex items-center justify-center mx-auto shadow-2xl">
+                <img src={logo2} alt="Logo" />
               </div>
               <motion.div
                 animate={{ rotate: 360 }}
@@ -293,33 +318,41 @@ const ImageGallery = ({ reservationId }) => {
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl  font-bold text-white mb-2 tracking-tight">
+            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
               Elhachimi Vision Lab
             </h1>
-            <p className="text-gray-400 mb-6">Professional Photography</p>
+            <p className="text-gray-400 mb-6">Professional {hasVideo ? 'Video' : 'Photography'}</p>
 
-           
-
-            {/* Preview Button */}
+            {/* Preview Button - changes based on media type */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={openGalleryModal}
               className="w-full py-4 hover:bg-[rgb(204,255,0)] hover:text-black text-white rounded-xl font-bold text-lg shadow-md shadow-[rgb(204,255,0)]/30 hover:shadow-[rgb(204,255,0)]/50 transition-all duration-300 flex items-center justify-center gap-3"
             >
-              <FiGrid className="w-5 h-5" />
-              Preview Gallery
-              <FiChevronUp className="w-5 h-5" />
+              {hasVideo ? (
+                <>
+                  <FiPlay className="w-5 h-5" />
+                  Watch Video
+                  <FiChevronUp className="w-5 h-5" />
+                </>
+              ) : (
+                <>
+                  <FiGrid className="w-5 h-5" />
+                  Preview Gallery
+                  <FiChevronUp className="w-5 h-5" />
+                </>
+              )}
             </motion.button>
 
             {/* Info Stats */}
             <div className="mt-8 grid grid-cols-2 gap-4">
               <div className="text-center p-3 bg-white/5 rounded-lg backdrop-blur-sm">
                 <div className="text-2xl font-bold text-white mb-1">
-                  {images.length}
+                  {hasVideo ? '1' : images.length}
                 </div>
                 <div className="text-xs text-gray-400 uppercase tracking-wider">
-                  Photos
+                  {hasVideo ? 'Video' : 'Photos'}
                 </div>
               </div>
               <div className="text-center p-3 bg-white/5 rounded-lg backdrop-blur-sm">
@@ -336,58 +369,13 @@ const ImageGallery = ({ reservationId }) => {
           {/* Footer */}
           <div className="border-t border-white/10 p-4">
             <div className="flex items-center justify-center gap-4 text-sm">
-              <span className="text-white  w-full text-lg arabicword "><marquee behavior=""  direction="left" >بصحتكم الشباب</marquee></span>
-              
+              <span className="text-white w-full text-lg arabicword">
+                <marquee direction="left">بصحتكم الشباب</marquee>
+              </span>
             </div>
           </div>
         </motion.div>
-
-       
-
-       
       </div>
-
-      {/* Mini Preview Modal */}
-      <AnimatePresence>
-        {showPreview && hasImages && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-20 w-full max-w-md px-4"
-          >
-            <div className="bg-black/80 backdrop-blur-lg rounded-xl border border-white/10 shadow-2xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-white font-semibold">Preview ({images.length})</h3>
-                <button
-                  onClick={togglePreview}
-                  className="p-1 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <FiX className="w-4 h-4 text-gray-400" />
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {images.slice(0, 6).map((image, index) => (
-                  <div
-                    key={index}
-                    className="aspect-square rounded-lg overflow-hidden border border-white/10"
-                  >
-                    <img
-                      src={image.url || image.thumbnail_url || `${process.env.REACT_APP_STORAGE_URL || 'http://localhost:8000/storage'}/${image.path}`}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = `https://via.placeholder.com/200/1a2c1a/22c55e?text=${index + 1}`;
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Full Gallery Modal */}
       <AnimatePresence>
@@ -409,29 +397,41 @@ const ImageGallery = ({ reservationId }) => {
                 <div className="container mx-auto px-4 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full  flex items-center justify-center">
-                        <img src={logo2} alt="" />
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center">
+                        <img src={logo2} alt="Logo" />
                       </div>
                       <div>
                         <h1 className="text-white font-bold text-lg">
                           {reservationInfo?.user?.name || 'Client'}
                         </h1>
                         <p className="text-gray-400 text-sm">
-                          Reservation #{effectiveReservationId} • {images.length} photos
+                          Reservation #{effectiveReservationId} • {hasVideo ? '1 Video' : `${images.length} photos`}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => {
-                          const downloadUrl = `${API_BASE}/public/reservation/${effectiveReservationId}/download-zip`;
-                          window.open(downloadUrl, '_blank');
-                        }}
-                        className="px-4 py-2 bg-[#22c55e] text-white rounded-lg hover:bg-[#16a34a] transition-colors flex items-center gap-2"
-                      >
-                        <FiDownload className="w-4 h-4" />
-                        Download All
-                      </button>
+                      {hasVideo ? (
+                        <button
+                          onClick={downloadVideo}
+                          className="px-4 py-2 bg-[#22c55e] text-white rounded-lg hover:bg-[#16a34a] transition-colors flex items-center gap-2"
+                        >
+                          <FiDownload className="w-4 h-4" />
+                          Download Video
+                        </button>
+                      ) : (
+                        hasImages && (
+                          <button
+                            onClick={() => {
+                              const downloadUrl = `${API_BASE}/public/reservation/${effectiveReservationId}/download-zip`;
+                              window.open(downloadUrl, '_blank');
+                            }}
+                            className="px-4 py-2 bg-[#22c55e] text-white rounded-lg hover:bg-[#16a34a] transition-colors flex items-center gap-2"
+                          >
+                            <FiDownload className="w-4 h-4" />
+                            Download All
+                          </button>
+                        )
+                      )}
                       <button
                         onClick={closeGalleryModal}
                         className="p-3 rounded-full hover:bg-gray-800 transition-colors"
@@ -443,7 +443,7 @@ const ImageGallery = ({ reservationId }) => {
                 </div>
               </div>
 
-              {/* Gallery Content */}
+              {/* Content */}
               <div className="container mx-auto px-4 py-8">
                 {/* Info Bar */}
                 {reservationInfo && (
@@ -470,7 +470,11 @@ const ImageGallery = ({ reservationId }) => {
                     </div>
                     <div className="bg-white/5 rounded-lg p-4">
                       <div className="flex items-center gap-3">
-                        <FiCamera className="w-5 h-5 text-[#22c55e]" />
+                        {hasVideo ? (
+                          <FiVideo className="w-5 h-5 text-[#22c55e]" />
+                        ) : (
+                          <FiCamera className="w-5 h-5 text-[#22c55e]" />
+                        )}
                         <div>
                           <p className="text-gray-400 text-sm">Service</p>
                           <p className="text-white font-medium">{reservationInfo.service?.type || 'N/A'}</p>
@@ -479,55 +483,75 @@ const ImageGallery = ({ reservationId }) => {
                     </div>
                     <div className="bg-white/5 rounded-lg p-4">
                       <div className="flex items-center gap-3">
-                        <FiImage className="w-5 h-5 text-[#22c55e]" />
+                        {hasVideo ? (
+                          <FiFilm className="w-5 h-5 text-[#22c55e]" />
+                        ) : (
+                          <FiImage className="w-5 h-5 text-[#22c55e]" />
+                        )}
                         <div>
-                          <p className="text-gray-400 text-sm">Total Photos</p>
-                          <p className="text-white font-medium">{images.length}</p>
+                          <p className="text-gray-400 text-sm">Total</p>
+                          <p className="text-white font-medium">{hasVideo ? '1 Video' : `${images.length} Photos`}</p>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Image Grid */}
-                {hasImages ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {images.map((image, index) => (
-                      <motion.div
-                        key={image.id || index}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                        className="group relative cursor-pointer"
-                        onClick={() => setSelectedImage(image)}
+                {/* Media Display */}
+                {hasVideo ? (
+                  <div className="flex justify-center items-center">
+                    <div className="relative w-full max-w-4xl bg-black/50 rounded-xl overflow-hidden border border-white/10">
+                      <video
+                        controls
+                        autoPlay={false}
+                        className="w-full h-auto max-h-[70vh]"
+                        src={videoUrl}
+                        poster={backgroundImages[0] || undefined}
                       >
-                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-black/20 aspect-square">
-                          <img
-                            src={image.url || image.thumbnail_url || `${process.env.REACT_APP_STORAGE_URL || 'http://localhost:8000/storage'}/${image.path}`}
-                            alt={image.caption || image.filename || `Image ${index + 1}`}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = `https://via.placeholder.com/400/1a2c1a/22c55e?text=Image+${index + 1}`;
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium">
-                            #{index + 1}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
                   </div>
                 ) : (
-                  <div className="text-center py-20">
-                    <div className="w-20 h-20 rounded-full bg-[#22c55e]/20 flex items-center justify-center mx-auto mb-4">
-                      <FiCameraOff className="w-10 h-10 text-[#22c55e]" />
+                  hasImages ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {images.map((image, index) => (
+                        <motion.div
+                          key={image.id || index}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          className="group relative cursor-pointer"
+                          onClick={() => setSelectedImage(image)}
+                        >
+                          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-black/20 aspect-square">
+                            <img
+                              src={image.url || image.thumbnail_url || `${STORAGE_URL}/${image.path}`}
+                              alt={image.caption || image.filename || `Image ${index + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = `https://via.placeholder.com/400/1a2c1a/22c55e?text=Image+${index + 1}`;
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium">
+                              #{index + 1}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2">No Images Available</h3>
-                    <p className="text-gray-400">No photos found for this reservation.</p>
-                  </div>
+                  ) : (
+                    <div className="text-center py-20">
+                      <div className="w-20 h-20 rounded-full bg-[#22c55e]/20 flex items-center justify-center mx-auto mb-4">
+                        <FiCameraOff className="w-10 h-10 text-[#22c55e]" />
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2">No Images Available</h3>
+                      <p className="text-gray-400">No photos found for this reservation.</p>
+                    </div>
+                  )
                 )}
               </div>
             </div>
@@ -535,7 +559,7 @@ const ImageGallery = ({ reservationId }) => {
         )}
       </AnimatePresence>
 
-      {/* Image Detail Modal */}
+      {/* Image Detail Modal (only for images) */}
       <AnimatePresence>
         {selectedImage && (
           <>
@@ -556,7 +580,7 @@ const ImageGallery = ({ reservationId }) => {
               >
                 <div className="relative rounded-xl overflow-hidden bg-black">
                   <img
-                    src={selectedImage.url || `${process.env.REACT_APP_STORAGE_URL || 'http://localhost:8000/storage'}/${selectedImage.path}`}
+                    src={selectedImage.url || `${STORAGE_URL}/${selectedImage.path}`}
                     alt={selectedImage.caption || selectedImage.filename || 'Selected Image'}
                     className="w-full h-auto max-h-[70vh] object-contain"
                     onError={(e) => {

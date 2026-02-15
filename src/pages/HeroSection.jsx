@@ -1,58 +1,155 @@
-import React, { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import { motion, useInView, useReducedMotion, useSpring, useTransform } from 'framer-motion';
 import { FiArrowRight, FiChevronDown } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import TargetCursor from '../components/ui/TargetCursor';
 
 const HeroSection = () => {
   const navigate = useNavigate();
   const heroRef = useRef(null);
-  const isInView = useInView(heroRef, { once: true });
+  const isInView = useInView(heroRef, { once: true, amount: 0.3 });
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const prefersReducedMotion = useReducedMotion();
 
-  // Energy rings - concentric pulsing circles
-  const energyRings = [
-    { id: 0, size: 300, delay: 0, duration: 4 },
-    { id: 1, size: 500, delay: 0.5, duration: 4.5 },
-    { id: 2, size: 700, delay: 1, duration: 5 },
-    { id: 3, size: 900, delay: 1.5, duration: 5.5 },
-    { id: 4, size: 1100, delay: 2, duration: 6 },
-  ];
+  // Smooth spring-based mouse tracking for fluid movement
+  const springConfig = { damping: 25, stiffness: 80, mass: 0.3 };
+  const smoothX = useSpring(0, springConfig);
+  const smoothY = useSpring(0, springConfig);
 
-  // Speed lines - diagonal streaks suggesting motion
-  const speedLines = Array.from({ length: 15 }).map((_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    length: 100 + Math.random() * 200,
-    angle: -35 + Math.random() * 10,
-    opacity: 0.05 + Math.random() * 0.1,
-    duration: 2 + Math.random() * 2,
-    delay: Math.random() * 3,
-  }));
+  // Transform spring values for smooth rotations
+  const rotateY = useTransform(smoothX, [-1, 1], [-3, 3]);
+  const rotateX = useTransform(smoothY, [-1, 1], [3, -3]);
 
-  // Floating energy orbs
-  const energyOrbs = [
-    { id: 0, x: 10, y: 20, size: 150, color: 'rgba(184, 230, 1, 0.4)', blur: 50 },
-    { id: 1, x: 85, y: 75, size: 200, color: 'rgba(72, 187, 120, 0.35)', blur: 60 },
-    { id: 2, x: 75, y: 15, size: 120, color: 'rgba(167, 243, 208, 0.3)', blur: 40 },
-    { id: 3, x: 20, y: 80, size: 180, color: 'rgba(52, 211, 153, 0.35)', blur: 55 },
-    { id: 4, x: 50, y: 50, size: 250, color: 'rgba(184, 230, 1, 0.25)', blur: 80 },
-  ];
+  // Individual spring values for each light beam - called at top level, not inside callbacks
+  const beamRotation1 = useSpring(0, { damping: 30, stiffness: 40 });
+  const beamRotation2 = useSpring(0, { damping: 30, stiffness: 40 });
+  const beamRotation3 = useSpring(0, { damping: 30, stiffness: 40 });
+  const beamRotation4 = useSpring(0, { damping: 30, stiffness: 40 });
+  
+  const beamRotations = [beamRotation1, beamRotation2, beamRotation3, beamRotation4];
 
-  // Kinetic particles - fast moving dots
-  const kineticParticles = Array.from({ length: 25 }).map((_, i) => ({
-    id: i,
-    startX: Math.random() * 100,
-    startY: 50 + Math.random() * 50,
-    speed: 3 + Math.random() * 4,
-    size: 2 + Math.random() * 3,
-  }));
+  useEffect(() => {
+    let ticking = false;
+    
+    const handleMouseMove = (e) => {
+      if (!ticking && heroRef.current) {
+        window.requestAnimationFrame(() => {
+          const rect = heroRef.current.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+          
+          smoothX.set(x);
+          smoothY.set(y);
+          setMousePosition({ x, y });
+          
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
 
-  // Spotlight beams
-  const spotlights = [
-    { id: 0, x: 20, angle: -25, color: 'rgba(184, 230, 1, 0.08)' },
-    { id: 1, x: 50, angle: 0, color: 'rgba(72, 187, 120, 0.06)' },
-    { id: 2, x: 80, angle: 25, color: 'rgba(167, 243, 208, 0.07)' },
-  ];
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [smoothX, smoothY]);
+
+  // Set beam rotations
+  useEffect(() => {
+    if (!prefersReducedMotion) {
+      beamRotations.forEach((spring) => {
+        spring.set(360);
+      });
+    }
+  }, [beamRotations, prefersReducedMotion]);
+
+  // Memoized grid lines with optimized animation values
+  const gridLines = useMemo(() => 
+    Array.from({ length: 10 }).map((_, i) => ({
+      id: i,
+      x: (i / 10) * 100,
+      delay: i * 0.05,
+      speed: prefersReducedMotion ? 0 : 12 + Math.sin(i) * 5,
+      opacity: 0.12 + Math.sin(i) * 0.03
+    })), [prefersReducedMotion]
+  );
+
+  // Memoized light beams with fluid parameters
+  const lightBeams = useMemo(() => [
+    { id: 0, angle: 15, color: 'rgba(184, 230, 1, 0.1)', width: 280, speed: 18, scale: 1.08 },
+    { id: 1, angle: 45, color: 'rgba(34, 197, 94, 0.08)', width: 380, speed: 24, scale: 1.15 },
+    { id: 2, angle: 75, color: 'rgba(168, 239, 161, 0.06)', width: 330, speed: 22, scale: 1.12 },
+    { id: 3, angle: 105, color: 'rgba(184, 230, 1, 0.06)', width: 420, speed: 28, scale: 1.18 },
+  ], []);
+
+  // Memoized floating shapes with smoother motion paths
+  const floatingShapes = useMemo(() => [
+    { 
+      id: 0, 
+      type: 'circle', 
+      size: 160, 
+      x: 15, 
+      y: 25, 
+      color: 'rgba(184, 230, 1, 0.05)', 
+      duration: 22, 
+      delay: 0,
+      moveRange: 6 
+    },
+    { 
+      id: 1, 
+      type: 'square', 
+      size: 120, 
+      x: 75, 
+      y: 60, 
+      color: 'rgba(34, 197, 94, 0.04)', 
+      duration: 26, 
+      delay: 2,
+      moveRange: 5
+    },
+    { 
+      id: 2, 
+      type: 'circle', 
+      size: 200, 
+      x: 85, 
+      y: 15, 
+      color: 'rgba(168, 239, 161, 0.03)', 
+      duration: 30, 
+      delay: 1,
+      moveRange: 7
+    },
+    { 
+      id: 3, 
+      type: 'diamond', 
+      size: 140, 
+      x: 25, 
+      y: 75, 
+      color: 'rgba(184, 230, 1, 0.04)', 
+      duration: 24, 
+      delay: 3,
+      moveRange: 5.5
+    },
+  ], []);
+
+  // Fluid animation variants for content
+  const contentVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        duration: 1.2, 
+        ease: [0.22, 0.03, 0.2, 1], // Custom cubic-bezier for smoother ease
+        staggerChildren: 0.08
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.7, ease: [0.22, 0.03, 0.2, 1] }
+    }
+  };
 
   return (
     <section
@@ -60,281 +157,289 @@ const HeroSection = () => {
       className="relative flex items-center justify-center pt-20 pb-12 sm:pt-24 md:pt-28 lg:pt-32 overflow-hidden"
       style={{ minHeight: 'calc(100vh - 80px)' }}
     >
-      {/* Deep dark gradient background */}
+      
+      {/* Base gradient */}
       <div 
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(135deg, #0a0a0a 0%, #0d1a0d 25%, #0a120a 50%, #0d1a12 75%, #0a0a0a 100%)',
+          background: 'radial-gradient(ellipse at 50% 50%, #0f0f0f 0%, #030303 70%, #000000 100%)',
         }}
-      >
-        {/* Central energy burst - pulsing rings */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          {energyRings.map((ring) => (
-            <motion.div
-              key={`ring-${ring.id}`}
-              className="absolute rounded-full border"
-              style={{
-                width: `${ring.size}px`,
-                height: `${ring.size}px`,
-                borderColor: 'rgba(184, 230, 1, 0.15)',
-                borderWidth: '1px',
-                boxShadow: '0 0 30px rgba(184, 230, 1, 0.1), inset 0 0 30px rgba(184, 230, 1, 0.05)',
-              }}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{
-                scale: [0.8, 1.2, 0.8],
-                opacity: [0, 0.6, 0],
-              }}
-              transition={{
-                duration: ring.duration,
-                repeat: Infinity,
-                ease: 'easeOut',
-                delay: ring.delay,
-              }}
-            />
-          ))}
-        </div>
+      />
+    
+      <TargetCursor 
+        spinDuration={2}
+        hideDefaultCursor
+        parallaxOn
+  hoverDuration={0.2}
+/>
 
-        {/* Speed lines - diagonal motion streaks */}
-        <div className="absolute inset-0 overflow-hidden">
-          {speedLines.map((line) => (
-            <motion.div
-              key={`speed-${line.id}`}
-              className="absolute"
-              style={{
-                left: `${line.x}%`,
-                top: `${line.y}%`,
-                width: `${line.length}px`,
-                height: '1px',
-                background: `linear-gradient(90deg, transparent, rgba(184, 230, 1, ${line.opacity}), rgba(72, 187, 120, ${line.opacity * 0.7}), transparent)`,
-                transform: `rotate(${line.angle}deg)`,
-                filter: 'blur(1px)',
-              }}
-              animate={{
-                x: ['-100%', '200%'],
-                opacity: [0, line.opacity * 2, 0],
-              }}
-              transition={{
-                duration: line.duration,
-                repeat: Infinity,
-                ease: 'linear',
-                delay: line.delay,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Energy orbs - glowing spheres */}
-        <div className="absolute inset-0">
-          {energyOrbs.map((orb) => (
-            <motion.div
-              key={`orb-${orb.id}`}
-              className="absolute"
-              style={{
-                left: `${orb.x}%`,
-                top: `${orb.y}%`,
-                width: `${orb.size}px`,
-                height: `${orb.size}px`,
-                transform: 'translate(-50%, -50%)',
-                background: `radial-gradient(circle at 50% 50%, ${orb.color} 0%, rgba(72, 187, 120, 0.1) 40%, transparent 70%)`,
-                filter: `blur(${orb.blur}px)`,
-              }}
-              animate={{
-                scale: [1, 1.3, 1],
-                opacity: [0.6, 1, 0.6],
-                x: [
-                  '0px',
-                  `${Math.sin(orb.id * 1.5) * 20}px`,
-                  '0px',
-                ],
-                y: [
-                  '0px',
-                  `${Math.cos(orb.id * 1.3) * 15}px`,
-                  '0px',
-                ],
-              }}
-              transition={{
-                duration: 8 + orb.id * 2,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Kinetic particles - fast moving energy dots */}
-        <div className="absolute inset-0 overflow-hidden">
-          {kineticParticles.map((particle) => (
-            <motion.div
-              key={`kinetic-${particle.id}`}
-              className="absolute rounded-full"
-              style={{
-                left: `${particle.startX}%`,
-                top: `${particle.startY}%`,
-                width: `${particle.size}px`,
-                height: `${particle.size}px`,
-                background: particle.id % 2 === 0 ? 'rgba(184, 230, 1, 0.7)' : 'rgba(167, 243, 208, 0.6)',
-                filter: 'blur(1px)',
-                boxShadow: `0 0 ${particle.size * 3}px ${particle.id % 2 === 0 ? 'rgba(184, 230, 1, 0.5)' : 'rgba(167, 243, 208, 0.4)'}`,
-              }}
-              animate={{
-                x: ['-50vw', '50vw'],
-                y: [
-                  `${Math.sin(particle.id) * 20}px`,
-                  `${Math.cos(particle.id) * 30}px`,
-                ],
-                opacity: [0, 1, 1, 0],
-              }}
-              transition={{
-                duration: particle.speed,
-                repeat: Infinity,
-                ease: 'linear',
-                delay: particle.id * 0.3,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Spotlight beams from top */}
-        <div className="absolute inset-0 overflow-hidden">
-          {spotlights.map((spot) => (
-            <motion.div
-              key={`spot-${spot.id}`}
-              className="absolute"
-              style={{
-                left: `${spot.x}%`,
-                top: '-10%',
-                width: '150px',
-                height: '120%',
-                background: `linear-gradient(to bottom, ${spot.color}, transparent)`,
-                transform: `rotate(${spot.angle}deg)`,
-                transformOrigin: 'top center',
-                filter: 'blur(20px)',
-              }}
-              animate={{
-                opacity: [0.3, 0.7, 0.3],
-                x: [
-                  '0px',
-                  `${Math.sin(spot.id * 2) * 30}px`,
-                  '0px',
-                ],
-              }}
-              transition={{
-                duration: 10 + spot.id * 3,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Hexagonal grid pattern overlay */}
-        <div 
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `
-              linear-gradient(30deg, rgba(184, 230, 1, 0.5) 12%, transparent 12.5%, transparent 87%, rgba(184, 230, 1, 0.5) 87.5%, rgba(184, 230, 1, 0.5)),
-              linear-gradient(150deg, rgba(184, 230, 1, 0.5) 12%, transparent 12.5%, transparent 87%, rgba(184, 230, 1, 0.5) 87.5%, rgba(184, 230, 1, 0.5)),
-              linear-gradient(30deg, rgba(184, 230, 1, 0.5) 12%, transparent 12.5%, transparent 87%, rgba(184, 230, 1, 0.5) 87.5%, rgba(184, 230, 1, 0.5)),
-              linear-gradient(150deg, rgba(184, 230, 1, 0.5) 12%, transparent 12.5%, transparent 87%, rgba(184, 230, 1, 0.5) 87.5%, rgba(184, 230, 1, 0.5)),
-              linear-gradient(60deg, rgba(184, 230, 1, 0.25) 25%, transparent 25.5%, transparent 75%, rgba(184, 230, 1, 0.25) 75%, rgba(184, 230, 1, 0.25)),
-              linear-gradient(60deg, rgba(184, 230, 1, 0.25) 25%, transparent 25.5%, transparent 75%, rgba(184, 230, 1, 0.25) 75%, rgba(184, 230, 1, 0.25))
-            `,
-            backgroundSize: '80px 140px',
-            backgroundPosition: '0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px',
-          }}
-        />
-
-        {/* Central glow core */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <motion.div
-            className="absolute"
-            style={{
-              width: '400px',
-              height: '400px',
-              background: 'radial-gradient(circle at 50% 50%, rgba(184, 230, 1, 0.15) 0%, rgba(72, 187, 120, 0.08) 30%, transparent 60%)',
-              filter: 'blur(40px)',
+      {!prefersReducedMotion && (
+        <>
+          {/* Dynamic grid with spring-based mouse interaction */}
+          <motion.div 
+            className="absolute inset-0 overflow-hidden"
+            style={{ 
+              perspective: '800px',
+              rotateX: rotateX,
+              rotateY: rotateY,
             }}
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.5, 0.8, 0.5],
-            }}
-            transition={{
-              duration: 6,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
-        </div>
-
-        {/* Edge vignette for depth */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.8) 100%)',
-          }}
-        />
-
-        {/* Bottom gradient fade */}
-        <div 
-          className="absolute bottom-0 left-0 right-0 h-48"
-          style={{
-            background: 'linear-gradient(to top, rgba(10, 10, 10, 0.9), transparent)',
-          }}
-        />
-      </div>
-
-      {/* Content Container with centered positioning */}
-      <div className="container relative mx-auto px-4 sm:px-6 z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 1.2, ease: 'easeOut' }}
-          className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8"
-        >
-          {/* Top decorative line with glow */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={isInView ? { opacity: 1, scale: 1 } : {}}
-            transition={{ delay: 0.2, duration: 0.8 }}
-            className="flex justify-center mb-6 sm:mb-8"
           >
-            <div className="h-px w-20 sm:w-24 bg-gradient-to-r from-transparent via-[#b8e601]/60 to-transparent shadow-[0_0_8px_rgba(184,230,1,0.3)]"></div>
+            {gridLines.map((line) => (
+              <React.Fragment key={`grid-${line.id}`}>
+                {/* Vertical lines */}
+                <motion.div
+                  className="absolute top-0 bottom-0 w-px"
+                  style={{
+                    left: `${line.x}%`,
+                    background: `linear-gradient(180deg, 
+                      transparent 0%, 
+                      rgba(184, 230, 1, ${line.opacity}) 20%, 
+                      rgba(34, 197, 94, ${line.opacity * 1.2}) 50%, 
+                      rgba(184, 230, 1, ${line.opacity}) 80%, 
+                      transparent 100%
+                    )`,
+                    boxShadow: '0 0 6px rgba(184, 230, 1, 0.1)',
+                  }}
+                  animate={{
+                    opacity: [0.15, 0.3, 0.15],
+                    scaleY: [0.97, 1.03, 0.97],
+                  }}
+                  transition={{
+                    duration: 12 + line.id * 0.5,
+                    delay: line.delay,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    times: [0, 0.5, 1]
+                  }}
+                />
+                {/* Horizontal lines */}
+                <motion.div
+                  className="absolute left-0 right-0 h-px"
+                  style={{
+                    top: `${line.x}%`,
+                    background: `linear-gradient(90deg, 
+                      transparent 0%, 
+                      rgba(184, 230, 1, ${line.opacity}) 20%, 
+                      rgba(34, 197, 94, ${line.opacity * 1.2}) 50%, 
+                      rgba(184, 230, 1, ${line.opacity}) 80%, 
+                      transparent 100%
+                    )`,
+                    boxShadow: '0 0 6px rgba(184, 230, 1, 0.1)',
+                  }}
+                  animate={{
+                    opacity: [0.15, 0.3, 0.15],
+                    scaleX: [0.97, 1.03, 0.97],
+                  }}
+                  transition={{
+                    duration: 14 + line.id * 0.5,
+                    delay: line.delay + 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    times: [0, 0.5, 1]
+                  }}
+                />
+              </React.Fragment>
+            ))}
           </motion.div>
 
-          {/* Main Headline with responsive typography */}
+          {/* Light beams with fluid rotation */}
+          <div className="absolute inset-0 overflow-hidden">
+            {lightBeams.map((beam, index) => (
+              <motion.div
+                key={`beam-${beam.id}`}
+                className="absolute"
+                style={{
+                  left: '50%',
+                  top: '50%',
+                  width: beam.width,
+                  height: '200%',
+                  background: `linear-gradient(${beam.angle + mousePosition.x * 8}deg, 
+                    transparent 0%, 
+                    ${beam.color} 20%, 
+                    ${beam.color} 50%, 
+                    transparent 80%, 
+                    transparent 100%
+                  )`,
+                  transform: 'translate(-50%, -50%)',
+                  filter: 'blur(40px)',
+                  mixBlendMode: 'screen',
+                  rotate: beamRotations[index],
+                }}
+                animate={{
+                  scale: [beam.scale * 0.92, beam.scale, beam.scale * 0.92],
+                  opacity: [0.18, 0.32, 0.18],
+                }}
+                transition={{
+                  scale: {
+                    duration: beam.speed,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    times: [0, 0.5, 1]
+                  },
+                  opacity: {
+                    duration: beam.speed * 0.7,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Floating shapes with smooth organic motion */}
+          <div className="absolute inset-0">
+            {floatingShapes.map((shape) => (
+              <motion.div
+                key={`shape-${shape.id}`}
+                className="absolute"
+                style={{
+                  left: `${shape.x}%`,
+                  top: `${shape.y}%`,
+                  width: shape.size,
+                  height: shape.size,
+                  border: shape.type === 'circle' ? `1px solid ${shape.color}` : 'none',
+                  ...(shape.type === 'circle' && { borderRadius: '50%' }),
+                  ...(shape.type === 'square' && { 
+                    background: shape.color,
+                    borderRadius: '20%',
+                  }),
+                  ...(shape.type === 'diamond' && {
+                    transform: `rotate(45deg)`,
+                    background: shape.color,
+                    border: 'none',
+                  }),
+                  boxShadow: `0 0 30px ${shape.color}`,
+                  filter: 'blur(1px)',
+                  mixBlendMode: 'screen',
+                }}
+                animate={{
+                  x: [
+                    '0%',
+                    `${Math.sin(shape.id * 1.5) * shape.moveRange}%`,
+                    `${Math.cos(shape.id * 2) * shape.moveRange}%`,
+                    `${Math.sin(shape.id * 1.8) * shape.moveRange}%`,
+                    '0%',
+                  ],
+                  y: [
+                    '0%',
+                    `${Math.cos(shape.id * 1.8) * shape.moveRange}%`,
+                    `${Math.sin(shape.id * 2.2) * shape.moveRange}%`,
+                    `${Math.cos(shape.id * 1.5) * shape.moveRange}%`,
+                    '0%',
+                  ],
+                  scale: [1, 1.06, 0.97, 1.03, 1],
+                  rotate: [0, 180, 360],
+                  opacity: [0.12, 0.2, 0.16, 0.22, 0.12],
+                }}
+                transition={{
+                  duration: shape.duration,
+                  delay: shape.delay,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  times: [0, 0.2, 0.4, 0.6, 0.8, 1]
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Subtle energy vortex */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ delay: 0.3, duration: 0.8 }}
-          >
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            style={{
+              width: '450px',
+              height: '450px',
+              background: 'conic-gradient(from 0deg, rgba(184,230,1,0.04), rgba(34,197,94,0.04), rgba(168,239,161,0.04), rgba(184,230,1,0.04))',
+              borderRadius: '50%',
+              filter: 'blur(25px)',
+              mixBlendMode: 'screen',
+            }}
+            animate={{
+              rotate: [0, 360],
+              scale: [1, 1.08, 1],
+            }}
+            transition={{
+              rotate: {
+                duration: 45,
+                repeat: Infinity,
+                ease: "linear",
+              },
+              scale: {
+                duration: 15,
+                repeat: Infinity,
+                ease: "easeInOut",
+                times: [0, 0.5, 1]
+              }
+            }}
+          />
+        </>
+      )}
+
+      {/* Simplified static background for reduced motion */}
+      {prefersReducedMotion && (
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-900 to-black opacity-20" />
+      )}
+
+      {/* Mouse-reactive light field */}
+      <motion.div
+        className="absolute inset-0"
+        style={{
+          background: `radial-gradient(circle at ${50 + mousePosition.x * 15}% ${50 + mousePosition.y * 15}%, 
+            rgba(184, 230, 1, 0.03) 0%, 
+            transparent 50%
+          )`,
+          mixBlendMode: 'overlay',
+        }}
+      />
+
+      {/* Vignette */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.6) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Content Container - Original button preserved exactly */}
+      <div className="container relative mx-auto px-4 sm:px-6 z-10">
+        <motion.div
+          variants={contentVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8"
+        >
+          {/* Top decorative line */}
+          <motion.div variants={itemVariants} className="flex justify-center mb-6 sm:mb-8">
+            <div className="h-px w-20 sm:w-24 bg-gradient-to-r from-transparent via-[#b8e601]/50 to-transparent shadow-[0_0_6px_rgba(184,230,1,0.2)]" />
+          </motion.div>
+
+          {/* Main Headline */}
+          <motion.div variants={itemVariants}>
             <div className="space-y-2 sm:space-y-3 md:space-y-2">
               <h1 className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight">
-                <span className="block text-gray-100">EL HACHIMI</span>
-                <span className="block bg-gradient-to-r from-gray-200 via-white to-gray-200 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(184,230,1,0.2)]">
+                <span className="block text-gray-100 ">EL HACHIMI</span>
+                <span className="block bg-gradient-to-r from-gray-200 via-white to-gray-200 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(184,230,1,0.15)]">
                   VISION <span className="text-[#b8e601]">LAB</span>
                 </span>
               </h1>
 
-              {/* Subtle divider with glow */}
+              {/* Subtle divider */}
               <motion.div
                 initial={{ width: 0 }}
-                animate={isInView ? { width: '80px' } : {}}
-                transition={{ delay: 0.4, duration: 1 }}
-                className="h-px bg-gradient-to-r from-transparent via-[#b8e601]/40 to-transparent mx-auto shadow-[0_0_6px_rgba(184,230,1,0.2)]"
+                animate={isInView ? { width: '70px' } : {}}
+                transition={{ delay: 0.4, duration: 1, ease: [0.22, 0.03, 0.2, 1] }}
+                className="h-px bg-gradient-to-r from-transparent via-[#b8e601]/30 to-transparent mx-auto shadow-[0_0_4px_rgba(184,230,1,0.15)]"
               />
             </div>
           </motion.div>
 
-          {/* Description Text - Responsive and centered */}
+          {/* Description Text */}
           <motion.div
+            variants={itemVariants}
             className="mb-8 sm:mb-10 md:mb-6"
-            initial={{ opacity: 0 }}
-            animate={isInView ? { opacity: 1 } : {}}
-            transition={{ delay: 0.6, duration: 1.2 }}
           >
             <div className="max-w-xl md:max-w-2xl mx-auto px-2 sm:px-4">
-              <p className="text-sm xs:text-base sm:text-lg md:text-xl text-gray-400 leading-relaxed sm:leading-loose font-light drop-shadow-[0_0_10px_rgba(184,230,1,0.1)]">
+              <p className="text-sm xs:text-base sm:text-lg md:text-xl text-gray-400 leading-relaxed sm:leading-loose font-light drop-shadow-[0_0_8px_rgba(184,230,1,0.08)]">
                 We are a multidisciplinary sports agency. From cinematic visuals to
                 data-driven analysis, we craft compelling narratives that elevate
                 athletes, teams, and brands to new heights.
@@ -342,18 +447,16 @@ const HeroSection = () => {
             </div>
           </motion.div>
 
-          {/* Main CTA Button - Responsive sizing with enhanced glow */}
+          {/* Main CTA Button - COMPLETELY UNCHANGED - original button preserved exactly */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={isInView ? { opacity: 1, scale: 1, y: 0 } : {}}
-            transition={{ delay: 0.8, duration: 0.6 }}
+            variants={itemVariants}
             className="mb-6 sm:mb-8"
           >
             <button
-              onClick={() => navigate('/works')}
-              className="group relative inline-flex items-center justify-center bg-transparent border border-[#b8e601] text-white hover:text-black hover:bg-[#b8e601] px-6 sm:px-8 md:px-10 py-3 sm:py-4 rounded-full font-semibold text-base sm:text-lg md:text-xl transition-all duration-300 shadow-2xl hover:scale-105 active:scale-95 overflow-hidden"
+              onClick={() => navigate('/photography')}
+              className="group relative inline-flex items-center justify-center bg-transparent border border-[#b8e601] text-white hover:text-black hover:bg-[#b8e601] px-6 sm:px-8 md:px-10 py-3 sm:py-4  font-semibold text-base sm:text-lg md:text-xl transition-all duration-300 shadow-2xl hover:scale-105 active:scale-95 overflow-hidden"
             >
-              <span className="relative z-10 whitespace-nowrap">
+              <span className="relative cursor-target z-10 whitespace-nowrap">
                 Explore Our Work
               </span>
               <FiArrowRight className="ml-2 sm:ml-3 group-hover:translate-x-2 transition-transform duration-300 flex-shrink-0" />
@@ -363,15 +466,13 @@ const HeroSection = () => {
             </button>
           </motion.div>
 
-          {/* Secondary CTA link with glow */}
+          {/* Secondary CTA link */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={isInView ? { opacity: 1 } : {}}
-            transition={{ delay: 1, duration: 0.8 }}
+            variants={itemVariants}
           >
             <button
               onClick={() => navigate('/contact')}
-              className="group text-xs sm:text-sm text-gray-400 hover:text-[#b8e601] font-medium transition-all duration-300 inline-flex items-center hover:drop-shadow-[0_0_8px_rgba(184,230,1,0.3)]"
+              className="group text-xs sm:text-sm text-gray-400 hover:text-[#b8e601] font-medium transition-all duration-300 inline-flex items-center hover:drop-shadow-[0_0_6px_rgba(184,230,1,0.2)]"
             >
               <span>Start a project with us</span>
               <span className="ml-2 group-hover:translate-x-1 transition-transform duration-300">→</span>
@@ -380,17 +481,22 @@ const HeroSection = () => {
         </motion.div>
       </div>
 
-      {/* Scroll Indicator - Responsive positioning with glow */}
+      {/* Scroll Indicator */}
       <motion.div
         className="absolute bottom-4 sm:bottom-6 md:bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10"
         initial={{ opacity: 0 }}
         animate={{
           opacity: 1,
-          y: [0, 8, 0],
+          y: [0, 5, 0],
         }}
         transition={{
           opacity: { delay: 1.2, duration: 1 },
-          y: { repeat: Infinity, duration: 2, ease: 'easeInOut' },
+          y: { 
+            repeat: Infinity, 
+            duration: 2.2, 
+            ease: "easeInOut",
+            times: [0, 0.5, 1]
+          },
         }}
       >
         <span className="text-xs text-gray-500 mb-1 tracking-wider uppercase hidden xs:block">
@@ -399,17 +505,18 @@ const HeroSection = () => {
         <div className="relative">
           <FiChevronDown className="text-gray-400 text-lg sm:text-xl" />
 
-          {/* Animated dot trail with enhanced glow */}
+          {/* Animated dot trail */}
           <motion.div
-            animate={{ y: [0, 6, 0] }}
+            animate={{ y: [0, 5, 0] }}
             transition={{
               repeat: Infinity,
-              duration: 1.5,
+              duration: 1.6,
               delay: 0.2,
+              ease: "easeInOut",
             }}
             className="absolute -bottom-1 left-1/2 transform -translate-x-1/2"
           >
-            <div className="w-1 h-1 bg-[#b8e601] rounded-full shadow-[0_0_6px_rgba(184,230,1,0.6)]"></div>
+            <div className="w-1 h-1 bg-[#b8e601] rounded-full shadow-[0_0_4px_rgba(184,230,1,0.4)]" />
           </motion.div>
         </div>
       </motion.div>

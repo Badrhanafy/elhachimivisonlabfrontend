@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { 
   FiX, FiZoomIn, FiZoomOut, FiMaximize, FiDownload, 
   FiHeart, FiEye, FiChevronLeft, FiChevronRight, FiInfo,
   FiCamera, FiMapPin, FiCalendar, FiUser, FiLoader
 } from 'react-icons/fi';
+import Navbar from '../components/Navbar';
+
 
 const Photography = () => {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
@@ -16,17 +18,17 @@ const Photography = () => {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isInfoVisible, setIsInfoVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [hoveredId, setHoveredId] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedReservation, setSelectedReservation] = useState(null);
+  const [activeCategory, setActiveCategory] = useState('all');
   
   const containerRef = useRef(null);
   const imageRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
+  const rafRef = useRef(null);
 
   // Fetch images from API
   useEffect(() => {
@@ -59,8 +61,8 @@ const Photography = () => {
             views: Math.floor(Math.random() * 5000 + 1000).toLocaleString(),
             likes: Math.floor(Math.random() * 1000 + 100)
           },
-          featured: index < 4, // First 4 images as featured
-          aspect: Math.random() > 0.3 ? 'landscape' : 'portrait', // Random aspect ratio
+          featured: index < 4,
+          aspect: Math.random() > 0.3 ? 'landscape' : 'portrait',
           reservation: img.reservation,
           mime_type: img.mime_type,
           size: img.size,
@@ -80,18 +82,22 @@ const Photography = () => {
     fetchImages();
   }, []);
 
-  // Extract unique teams/stadiums for categories
-  const categories = ['All', ...new Set(images.map(img => img.reservation?.team || 'Sports').filter(Boolean))];
-  
-  const featuredPhotos = images.filter(img => img.featured);
-  const [activeCategory, setActiveCategory] = useState('all');
+  // Memoized categories
+  const categories = useMemo(() => {
+    return ['All', ...new Set(images.map(img => img.reservation?.team || 'Sports').filter(Boolean))];
+  }, [images]);
 
-  const filteredImages = activeCategory === 'all' 
-    ? images 
-    : images.filter(img => 
-        (img.reservation?.team || '').toLowerCase() === activeCategory.toLowerCase() ||
-        (img.reservation?.stadium || '').toLowerCase() === activeCategory.toLowerCase()
-      );
+  // Memoized featured photos
+  const featuredPhotos = useMemo(() => images.filter(img => img.featured), [images]);
+
+  // Memoized filtered images
+  const filteredImages = useMemo(() => {
+    if (activeCategory === 'all') return images;
+    return images.filter(img => 
+      (img.reservation?.team || '').toLowerCase() === activeCategory.toLowerCase() ||
+      (img.reservation?.stadium || '').toLowerCase() === activeCategory.toLowerCase()
+    );
+  }, [images, activeCategory]);
 
   // Scroll animations
   const { scrollYProgress } = useScroll({
@@ -104,26 +110,11 @@ const Photography = () => {
   const textOpacity = useTransform(scrollYProgress, [0.1, 0.3], [0, 1]);
   const textY = useTransform(scrollYProgress, [0, 0.3], [50, -50]);
 
-  // Mouse parallax effect
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      const { clientX, clientY } = e;
-      const { innerWidth, innerHeight } = window;
-      const x = (clientX - innerWidth / 2) / 30;
-      const y = (clientY - innerHeight / 2) / 30;
-      setMousePosition({ x, y });
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  // Set loaded state after initial render
   useEffect(() => {
     setIsLoaded(true);
   }, []);
 
-  const openPhotoModal = (photo, index) => {
+  const openPhotoModal = useCallback((photo, index) => {
     setSelectedPhoto(photo);
     setCurrentIndex(images.findIndex(img => img.id === photo.id));
     setZoomLevel(1);
@@ -131,9 +122,9 @@ const Photography = () => {
     setIsZooming(false);
     setIsInfoVisible(false);
     document.body.style.overflow = 'hidden';
-  };
+  }, [images]);
 
-  const closePhotoModal = () => {
+  const closePhotoModal = useCallback(() => {
     setSelectedPhoto(null);
     setZoomLevel(1);
     setDragOffset({ x: 0, y: 0 });
@@ -141,9 +132,10 @@ const Photography = () => {
     setIsInfoVisible(false);
     setIsFullscreen(false);
     document.body.style.overflow = 'auto';
-  };
+  }, []);
 
-  const navigatePhoto = (direction) => {
+  const navigatePhoto = useCallback((direction) => {
+    if (!selectedPhoto) return;
     const currentIdx = images.findIndex(img => img.id === selectedPhoto.id);
     let newIndex;
     if (direction === 'next') {
@@ -156,36 +148,39 @@ const Photography = () => {
     setZoomLevel(1);
     setDragOffset({ x: 0, y: 0 });
     setIsZooming(false);
-  };
+  }, [images, selectedPhoto]);
 
-  const toggleLike = (photoId) => {
+  const toggleLike = useCallback((photoId) => {
     setLikedPhotos(prev => 
       prev.includes(photoId) 
         ? prev.filter(id => id !== photoId)
         : [...prev, photoId]
     );
-  };
+  }, []);
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     setZoomLevel(prev => Math.min(prev + 0.5, 4));
     setIsZooming(true);
-  };
+  }, []);
 
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.5, 1));
-    if (zoomLevel - 0.5 <= 1) {
-      setDragOffset({ x: 0, y: 0 });
-      setIsZooming(false);
-    }
-  };
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel(prev => {
+      const newZoom = Math.max(prev - 0.5, 1);
+      if (newZoom <= 1) {
+        setDragOffset({ x: 0, y: 0 });
+        setIsZooming(false);
+      }
+      return newZoom;
+    });
+  }, []);
 
-  const handleZoomReset = () => {
+  const handleZoomReset = useCallback(() => {
     setZoomLevel(1);
     setDragOffset({ x: 0, y: 0 });
     setIsZooming(false);
-  };
+  }, []);
 
-  const handleMouseDown = (e) => {
+  const handleMouseDown = useCallback((e) => {
     if (zoomLevel > 1) {
       setIsDragging(true);
       dragStartRef.current = {
@@ -193,21 +188,21 @@ const Photography = () => {
         y: e.clientY - dragOffset.y
       };
     }
-  };
+  }, [zoomLevel, dragOffset]);
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     if (isDragging && zoomLevel > 1) {
       const x = e.clientX - dragStartRef.current.x;
       const y = e.clientY - dragStartRef.current.y;
       setDragOffset({ x, y });
     }
-  };
+  }, [isDragging, zoomLevel]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
-  const handleWheel = (e) => {
+  const handleWheel = useCallback((e) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       if (e.deltaY < 0) {
@@ -216,36 +211,37 @@ const Photography = () => {
         handleZoomOut();
       }
     }
-  };
+  }, [handleZoomIn, handleZoomOut]);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
     } else {
       document.exitFullscreen();
+      setIsFullscreen(false);
     }
-    setIsFullscreen(!isFullscreen);
-  };
+  }, []);
 
-  const handleDownload = async () => {
-    if (selectedPhoto) {
-      try {
-        const response = await fetch(selectedPhoto.image);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = selectedPhoto.filename || `image-${selectedPhoto.id}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error('Download failed:', error);
-      }
+  const handleDownload = useCallback(async () => {
+    if (!selectedPhoto) return;
+    try {
+      const response = await fetch(selectedPhoto.image);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = selectedPhoto.filename || `image-${selectedPhoto.id}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
     }
-  };
+  }, [selectedPhoto]);
 
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!selectedPhoto) return;
@@ -257,30 +253,80 @@ const Photography = () => {
       else if (e.key === '-') handleZoomOut();
       else if (e.key === '0') handleZoomReset();
       else if (e.key === 'f') toggleFullscreen();
-      else if (e.key === 'i') setIsInfoVisible(!isInfoVisible);
+      else if (e.key === 'i') setIsInfoVisible(prev => !prev);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedPhoto, isInfoVisible, zoomLevel]);
+  }, [selectedPhoto, closePhotoModal, navigatePhoto, handleZoomIn, handleZoomOut, handleZoomReset, toggleFullscreen]);
 
-  // Loading State
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
+  // Cleanup body overflow on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
+
+// Loading State
+if (loading) {
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-center">
+
+        {/* Logo Reveal From Bottom */}
+        <div className="w-28 h-28 mx-auto mb-6 overflow-hidden relative">
           <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 mx-auto mb-4"
+            initial={{ y: "100%" }}
+            animate={{ y: "0%" }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            className="w-full h-full"
           >
-            <FiLoader className="w-16 h-16 text-[#22c55e]" />
+            <img
+              src="/logo2.png"
+              alt="Logo"
+              className="w-full h-full object-contain "
+            />
           </motion.div>
-          <p className="text-white text-lg">Loading amazing sports moments...</p>
         </div>
+
+        {/* Text */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1 }}
+          className="text-white text-xl font-semibold tracking-wide"
+        >
+          Preparing your experience...
+        </motion.p>
+
+        {/* Animated Line */}
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: "120px" }}
+          transition={{ delay: 1.3, duration: 1 }}
+          className="h-[2px] bg-white mx-auto mt-3"
+        />
+
+        {/* Dots Loader Under Line */}
+        <div className="flex justify-center gap-2 mt-4">
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              className="w-2 h-2 bg-white rounded-full"
+              animate={{ opacity: [0.2, 1, 0.2] }}
+              transition={{
+                duration: 1.2,
+                repeat: Infinity,
+                delay: i * 0.3,
+              }}
+            />
+          ))}
+        </div>
+
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // Error State
   if (error) {
@@ -303,32 +349,27 @@ const Photography = () => {
 
   return (
     <div ref={containerRef} className="relative min-h-screen bg-black overflow-x-hidden">
-      {/* Hero Section with Camera */}
+      
+     <div className='absolute'>
+        <Navbar/>
+     </div>
+      {/* Hero Section with Floating Background Animations */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-[#22c55e]/20" />
-          <motion.div 
-            className="absolute inset-0 opacity-30"
-            animate={{
-              background: [
-                'radial-gradient(circle at 20% 50%, rgba(34,197,94,0.15) 0%, transparent 50%)',
-                'radial-gradient(circle at 80% 50%, rgba(34,197,94,0.15) 0%, transparent 50%)',
-                'radial-gradient(circle at 20% 50%, rgba(34,197,94,0.15) 0%, transparent 50%)',
-              ]
-            }}
-            transition={{ duration: 10, repeat: Infinity }}
-          />
+        {/* Dark background with floating CSS shapes */}
+        <div className="absolute inset-0 bg-black">
+          <div className="floating-shape shape-1" />
+          <div className="floating-shape shape-2" />
+          <div className="floating-shape shape-3" />
+          <div className="floating-shape shape-4" />
+          <div className="floating-shape shape-5" />
         </div>
 
-        {/* Camera with Parallax */}
+        {/* Logo Container with Glassmorphism and subtle floating animation */}
         <motion.div
-          className="relative z-10 w-full max-w-4xl mx-auto px-4"
+          className="relative z-10 w-full max-w-4xl mx-auto px-4 floating-logo"
           style={{
             scale: cameraScale,
             opacity: cameraOpacity,
-            x: mousePosition.x,
-            y: mousePosition.y,
           }}
         >
           <motion.div
@@ -337,111 +378,44 @@ const Photography = () => {
             transition={{ duration: 1, ease: "easeOut" }}
             className="relative"
           >
-            {/* Camera SVG */}
-            <svg viewBox="0 0 800 400" className="w-full h-auto filter drop-shadow-2xl">
-              {/* Camera Body */}
-              <g>
-                <defs>
-                  <linearGradient id="bodyGradient" x1="200" y1="120" x2="600" y2="280">
-                    <stop offset="0%" stopColor="#333" />
-                    <stop offset="100%" stopColor="#666" />
-                  </linearGradient>
-                  <linearGradient id="lensGradient" x1="360" y1="160" x2="440" y2="240">
-                    <stop offset="0%" stopColor="#22c55e" />
-                    <stop offset="100%" stopColor="#16a34a" />
-                  </linearGradient>
-                </defs>
+            {/* Glass panel */}
+            <div className="backdrop-blur-xl bg-black/40 border border-[#22c55e]/30 rounded-3xl p-12 shadow-2xl">
+              {/* Logo */}
+              <div className="flex flex-col items-center">
+                <div className="relative mb-6 ">
+                  <img src="/logo2.png" alt="Logo" className="w-32  h-32 object-contain" />
+                </div>
+                
+                <h1 className="text-5xl md:text-7xl font-black text-white text-center">
+                  <span className="block">SPORTS</span>
+                  <span className="text-transparent bg-clip-text bg-[rgb(115,255,0)]">
+                    MOMENTS
+                  </span>
+                </h1>
+                
+                <p className="mt-4 text-gray-300 text-lg max-w-md text-center">
+                  Professional sports photography
+                </p>
+                
+                <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
+                  <FiCamera className="text-[#22c55e]" />
+                  <span className="text-white text-sm">{images.length} Images</span>
+                </div>
+              </div>
+            </div>
 
-                {/* Camera Body */}
-                <motion.rect
-                  x="200" y="120" width="400" height="160" rx="20"
-                  fill="url(#bodyGradient)"
-                  stroke="#22c55e"
-                  strokeWidth="2"
-                  initial={{ y: 50 }}
-                  animate={{ y: 0 }}
-                  transition={{ duration: 0.8 }}
-                />
-
-                {/* Lens Mount */}
-                <circle cx="400" cy="200" r="70" fill="#1a1a1a" stroke="#22c55e" strokeWidth="3"/>
-                <circle cx="400" cy="200" r="55" fill="#2a2a2a" stroke="#22c55e" strokeWidth="2"/>
-                
-                {/* Animated Lens */}
-                <motion.circle
-                  cx="400" cy="200" r="40"
-                  fill="url(#lensGradient)"
-                  animate={{ r: [40, 42, 40] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                />
-                
-                {/* Lens Reflection */}
-                <motion.circle
-                  cx="380" cy="180" r="8"
-                  fill="white"
-                  opacity="0.6"
-                  animate={{ opacity: [0.6, 0.8, 0.6] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-                
-                {/* Shutter Button */}
-                <motion.rect
-                  x="550" y="100" width="30" height="20" rx="5"
-                  fill="#22c55e"
-                  animate={{ y: [100, 98, 100] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-                
-                {/* Mode Dial */}
-                <circle cx="500" cy="100" r="15" fill="#333" stroke="#22c55e" strokeWidth="2"/>
-                <circle cx="500" cy="100" r="8" fill="#22c55e"/>
-                
-                {/* Strap Lugs */}
-                <rect x="220" y="110" width="20" height="30" fill="#666"/>
-                <rect x="560" y="110" width="20" height="30" fill="#666"/>
-                
-                {/* Camera Strap */}
-                <path d="M240 125 Q 320 50, 400 125" stroke="#444" strokeWidth="8" fill="none"/>
-                <path d="M560 125 Q 640 50, 720 125" stroke="#444" strokeWidth="8" fill="none"/>
-                
-                {/* Flash */}
-                <rect x="620" y="80" width="30" height="40" rx="5" fill="#444" stroke="#22c55e" strokeWidth="1"/>
-                <rect x="625" y="85" width="20" height="30" rx="3" fill="#666"/>
-              </g>
-            </svg>
-
-            {/* Floating Elements */}
-            <motion.div
-              className="absolute -top-10 -right-10 w-20 h-20 rounded-full bg-[#22c55e]/20 blur-xl"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 4, repeat: Infinity }}
-            />
-            <motion.div
-              className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-[#16a34a]/20 blur-xl"
-              animate={{ scale: [1, 1.3, 1] }}
-              transition={{ duration: 5, repeat: Infinity }}
-            />
+            {/* Floating decorative accents */}
+            <div className="floating-accent accent-1" />
+            <div className="floating-accent accent-2" />
           </motion.div>
         </motion.div>
 
-        {/* Overlay Text */}
+        {/* Overlay Text (appears on scroll) */}
         <motion.div
           className="absolute inset-0 flex items-center justify-center z-20"
           style={{ opacity: textOpacity, y: textY }}
         >
           <div className="text-center max-w-4xl px-4">
-            <motion.h1 
-              className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <span className="block">SPORTS</span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#22c55e] to-[#16a34a]">
-                MOMENTS
-              </span>
-            </motion.h1>
-            
             <motion.p 
               className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto"
               initial={{ opacity: 0 }}
@@ -449,7 +423,6 @@ const Photography = () => {
               transition={{ delay: 0.5 }}
             >
               Capturing the intensity, emotion, and beauty of sports through professional photography.
-              {images.length} moments captured and counting.
             </motion.p>
 
             <motion.div 
@@ -471,17 +444,6 @@ const Photography = () => {
                   {photo.reservation?.team || 'Sports'}
                 </motion.button>
               ))}
-            </motion.div>
-
-            {/* Image Count Badge */}
-            <motion.div 
-              className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/10"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.9 }}
-            >
-              <FiCamera className="text-[#22c55e]" />
-              <span className="text-white text-sm">{images.length} Images</span>
             </motion.div>
           </div>
         </motion.div>
@@ -536,8 +498,7 @@ const Photography = () => {
         </div>
       )}
 
-      {/* Gallery Section */}
-      <section className="py-20">
+           <section className="py-20">
         <div className="container mx-auto px-4">
           {/* Featured Grid */}
           {featuredPhotos.length > 0 && (
@@ -561,13 +522,13 @@ const Photography = () => {
                     transition={{ delay: index * 0.1 }}
                     whileHover={{ y: -10 }}
                     onClick={() => openPhotoModal(photo, images.indexOf(photo))}
-                    className="group relative cursor-pointer overflow-hidden rounded-2xl"
-                  >
+                    className="group relative  border-rotate cursor-pointer overflow-hidden "
+                  > 
                     <div className="aspect-[16/9] overflow-hidden">
                       <img 
                         src={photo.image} 
                         alt={photo.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        className="w-full h-full   object-cover transition-transform duration-700 group-hover:scale-110"
                         loading="lazy"
                       />
                     </div>
@@ -623,28 +584,27 @@ const Photography = () => {
                   onHoverStart={() => setHoveredId(photo.id)}
                   onHoverEnd={() => setHoveredId(null)}
                   onClick={() => openPhotoModal(photo, images.indexOf(photo))}
-                  className="group relative cursor-pointer overflow-hidden rounded-xl break-inside-avoid mb-6"
+                  className="group relative cursor-pointer overflow-hidden  break-inside-avoid mb-6"
                 >
-                  <div className="relative">
+                  <div className="relative ">
                     <img 
                       src={photo.image} 
                       alt={photo.title}
-                      className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="w-full h-auto  object-cover transition-transform duration-700 group-hover:scale-110"
                       loading="lazy"
                     />
 
-                    {/* Hover Info */}
-                    <motion.div 
-                      className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: hoveredId === photo.id ? 1 : 0 }}
-                      transition={{ duration: 0.3 }}
+                    {/* Hover Info - use CSS transition for better performance */}
+                    <div 
+                      className={`absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent transition-opacity duration-300 ${
+                        hoveredId === photo.id ? 'opacity-100' : 'opacity-0'
+                      }`}
                     >
                       <div className="absolute bottom-0 left-0 right-0 p-6">
-                        <motion.div
-                          initial={{ y: 20, opacity: 0 }}
-                          animate={{ y: hoveredId === photo.id ? 0 : 20, opacity: hoveredId === photo.id ? 1 : 0 }}
-                          transition={{ delay: 0.1 }}
+                        <div
+                          className={`transform transition-all duration-300 delay-100 ${
+                            hoveredId === photo.id ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                          }`}
                         >
                           <div className="flex items-center gap-2 mb-2">
                             <span className="px-2 py-1 rounded-full bg-[#22c55e] text-white text-xs font-semibold">
@@ -670,9 +630,9 @@ const Photography = () => {
                               <FiCalendar /> {photo.date}
                             </span>
                           </div>
-                        </motion.div>
+                        </div>
                       </div>
-                    </motion.div>
+                    </div>
 
                     {/* Quick Info Badge */}
                     <div className="absolute top-4 left-4">
@@ -702,7 +662,7 @@ const Photography = () => {
         </div>
       </section>
 
-      {/* Photo Modal */}
+      {/* Photo Modal - Optimized */}
       <AnimatePresence>
         {selectedPhoto && (
           <>
@@ -820,12 +780,14 @@ const Photography = () => {
                 <motion.div
                   ref={imageRef}
                   initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: zoomLevel, opacity: 1 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
                   transition={{ duration: 0.3 }}
                   className="relative"
                   style={{
                     transform: `scale(${zoomLevel}) translate(${dragOffset.x}px, ${dragOffset.y}px)`,
-                    cursor: isZooming ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in'
+                    cursor: isZooming ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+                    willChange: 'transform',
                   }}
                   onMouseDown={handleMouseDown}
                   onClick={(e) => {
@@ -906,6 +868,103 @@ const Photography = () => {
           </>
         )}
       </AnimatePresence>
+      <style jsx>{`
+        .floating-shape {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(80px);
+          will-change: transform;
+          animation: float 30s infinite ease-in-out;
+        }
+        .shape-1 {
+          top: 25%;
+          left: 25%;
+          width: 600px;
+          height: 600px;
+          background: linear-gradient(to bottom right, rgba(204, 255, 0, 0.6), transparent);
+          animation-duration: 30s;
+        }
+        .shape-2 {
+          bottom: 33%;
+          right: 25%;
+          width: 500px;
+          height: 500px;
+          background: linear-gradient(to top, rgba(204, 255, 0, 0.6), transparent);
+          animation-duration: 25s;
+          animation-delay: 2s;
+        }
+        .shape-3 {
+          top: 50%;
+          right: 33%;
+          width: 400px;
+          height: 400px;
+          background: rgba(0, 0, 0, 0.5);
+          animation-duration: 20s;
+          animation-delay: 1s;
+        }
+        .shape-4 {
+          bottom: 25%;
+          left: 33%;
+          width: 700px;
+          height: 700px;
+          background: rgba(34, 197, 94, 0.1);
+          animation-duration: 35s;
+          animation-delay: 3s;
+        }
+        .shape-5 {
+          top: 33%;
+          left: 50%;
+          width: 450px;
+          height: 450px;
+          background: rgba(0, 0, 0, 0.7);
+          animation-duration: 28s;
+          animation-delay: 4s;
+        }
+        @keyframes float {
+          0% { transform: translate(0, 0) scale(1); }
+          25% { transform: translate(150px, -200px) scale(1.3); }
+          50% { transform: translate(-100px, 150px) scale(0.9); }
+          75% { transform: translate(50px, -100px) scale(1.1); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+
+        /* Floating logo animation */
+        .floating-logo {
+          animation: logoFloat 6s infinite ease-in-out;
+          will-change: transform;
+        }
+        @keyframes logoFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
+        }
+
+        .floating-accent {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(30px);
+          will-change: transform;
+          animation: pulse 4s infinite ease-in-out;
+        }
+        .accent-1 {
+          top: -10px;
+          right: -10px;
+          width: 80px;
+          height: 80px;
+          background: rgba(204, 255, 0, 0.6);
+        }
+        .accent-2 {
+          bottom: -10px;
+          left: -10px;
+          width: 128px;
+          height: 128px;
+          background: rgba(204, 255, 0, 0.6);
+          animation-delay: 1s;
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1) translate(0, 0); }
+          50% { transform: scale(1.2) translate(10px, -10px); }
+        }
+      `}</style>
     </div>
   );
 };
