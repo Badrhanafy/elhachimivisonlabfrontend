@@ -12,6 +12,7 @@ import ServicesSection from './ServicesSection';
 import VideoSection from './Video';
 import FlowSection from './Flow';
 import GridContent from './GridContent';
+import Team from '../components/Team';
 
 const Homepage = () => {
   const containerRef = useRef(null);
@@ -50,6 +51,7 @@ const Homepage = () => {
 
         
         <CTASection />
+        <Team/>
         <Footer />
       </div>
     </div>

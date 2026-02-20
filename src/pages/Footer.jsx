@@ -1,3 +1,4 @@
+import { Globe } from 'lucide-react';
 import React from 'react';
 
 const Footer = () => {
@@ -6,6 +7,7 @@ const Footer = () => {
       <div className="container mx-auto px-6">
         <p>© {new Date().getFullYear()} El Hachimi VisionLab. Crafting the future of sports media.</p>
       </div>
+      
     </footer>
   );
 };

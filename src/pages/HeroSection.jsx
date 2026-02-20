@@ -165,7 +165,110 @@ const HeroSection = () => {
           background: 'radial-gradient(ellipse at 50% 50%, #0f0f0f 0%, #030303 70%, #000000 100%)',
         }}
       />
-    
+        <div className="absolute inset-0 bg-black">
+          <div className="floating-shape shape-1" />
+          <div className="floating-shape shape-2" />
+          <div className="floating-shape shape-3" />
+          <div className="floating-shape shape-4" />
+          <div className="floating-shape shape-5" />
+        </div>
+    <style jsx>{`
+        .floating-shape {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(80px);
+          will-change: transform;
+          animation: float 30s infinite ease-in-out;
+        }
+        .shape-1 {
+          top: 25%;
+          left: 25%;
+          width: 600px;
+          height: 600px;
+          background: linear-gradient(to bottom right, rgba(204, 255, 0, 0.6), transparent);
+          animation-duration: 30s;
+        }
+        .shape-2 {
+          bottom: 33%;
+          right: 25%;
+          width: 500px;
+          height: 500px;
+          background: linear-gradient(to top, rgba(204, 255, 0, 0.6), transparent);
+          animation-duration: 25s;
+          animation-delay: 2s;
+        }
+        .shape-3 {
+          top: 50%;
+          right: 33%;
+          width: 400px;
+          height: 400px;
+          background: rgba(0, 0, 0, 0.5);
+          animation-duration: 20s;
+          animation-delay: 1s;
+        }
+        .shape-4 {
+          bottom: 25%;
+          left: 33%;
+          width: 700px;
+          height: 700px;
+          background: rgba(34, 197, 94, 0.1);
+          animation-duration: 35s;
+          animation-delay: 3s;
+        }
+        .shape-5 {
+          top: 33%;
+          left: 50%;
+          width: 450px;
+          height: 450px;
+          background: rgba(0, 0, 0, 0.7);
+          animation-duration: 28s;
+          animation-delay: 4s;
+        }
+        @keyframes float {
+          0% { transform: translate(0, 0) scale(1); }
+          25% { transform: translate(150px, -200px) scale(1.3); }
+          50% { transform: translate(-100px, 150px) scale(0.9); }
+          75% { transform: translate(50px, -100px) scale(1.1); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+
+        /* Floating logo animation */
+        .floating-logo {
+          animation: logoFloat 6s infinite ease-in-out;
+          will-change: transform;
+        }
+        @keyframes logoFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
+        }
+
+        .floating-accent {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(30px);
+          will-change: transform;
+          animation: pulse 4s infinite ease-in-out;
+        }
+        .accent-1 {
+          top: -10px;
+          right: -10px;
+          width: 80px;
+          height: 80px;
+          background: rgba(204, 255, 0, 0.6);
+        }
+        .accent-2 {
+          bottom: -10px;
+          left: -10px;
+          width: 128px;
+          height: 128px;
+          background: rgba(204, 255, 0, 0.6);
+          animation-delay: 1s;
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1) translate(0, 0); }
+          50% { transform: scale(1.2) translate(10px, -10px); }
+        }
+      `}</style>
       <TargetCursor 
         spinDuration={2}
         hideDefaultCursor

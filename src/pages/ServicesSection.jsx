@@ -43,7 +43,7 @@ const ServicesSection = () => {
               viewport={{ once: true, amount: 0.5 }}
               transition={{ duration: 0.6, delay: index * 0.15 }}
               whileHover={{ y: -10, transition: { duration: 0.2 } }}
-              className="group hover:bg-gradient-to-b from-gray-900/80 to-black/80 p-8 rounded-2xl border hover:shadow-[0_0_30px_#c0e628] border-[#c0e628] hover:border-gray-600 transition-all backdrop-blur-sm"
+              className="group hover:bg-gradient-to-l cursor-target from-[#ccff00]/20 p-8  border  hover:border-[#c0e628] border-gray-800  transition-all"
             >
               <div className="text-4xl mb-6 text-gray-300 group-hover:text-white">
                 {service.icon}

@@ -47,11 +47,12 @@ import {
 import { reservationAPI } from '../../services/api';
 import ImageUploadModal from './ImageUploadModal';
 
-// Inline VideoUploadModal component
+// Inline VideoUploadModal component with progress bar
 const VideoUploadModal = ({ reservation, onClose, onUpload }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -60,12 +61,14 @@ const VideoUploadModal = ({ reservation, onClose, onUpload }) => {
         setError('Please select a valid video file (mp4, mov, avi)');
         return;
       }
-      if (file.size > 100 * 1024 * 1024) {
+      // Fix: 100MB = 100 * 1024 * 1024 bytes
+      if (file.size > 100 * 5024 * 5024) {
         setError('File size must be less than 100MB');
         return;
       }
       setSelectedFile(file);
       setError('');
+      setUploadProgress(0); // reset progress when new file selected
     }
   };
 
@@ -76,11 +79,13 @@ const VideoUploadModal = ({ reservation, onClose, onUpload }) => {
     const formData = new FormData();
     formData.append('video', selectedFile);
     try {
-      await onUpload(reservation.id, formData);
+      // Pass progress callback as third argument
+      await onUpload(reservation.id, formData, (progress) => {
+        setUploadProgress(progress);
+      });
       onClose();
     } catch (err) {
       setError('Upload failed. Please try again.');
-    } finally {
       setUploading(false);
     }
   };
@@ -137,6 +142,22 @@ const VideoUploadModal = ({ reservation, onClose, onUpload }) => {
                 )}
               </div>
 
+              {/* Progress bar */}
+              {uploading && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Uploading...</span>
+                    <span className="text-[#B8E601]">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-black/30 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-[#B8E601] to-[#B8E601]/70 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="bg-gradient-to-r from-[#B8E601]/10 to-transparent border border-[#B8E601]/30 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-[#B8E601]/20 flex items-center justify-center flex-shrink-0">
@@ -164,7 +185,7 @@ const VideoUploadModal = ({ reservation, onClose, onUpload }) => {
                   {uploading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Uploading...
+                      Uploading {uploadProgress}%...
                     </>
                   ) : (
                     <>
@@ -175,7 +196,8 @@ const VideoUploadModal = ({ reservation, onClose, onUpload }) => {
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-4 py-3 bg-white/5 text-white rounded-xl font-medium hover:bg-white/10 transition-all"
+                  disabled={uploading}
+                  className="px-4 py-3 bg-white/5 text-white rounded-xl font-medium hover:bg-white/10 transition-all disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -310,10 +332,17 @@ const Reservations = () => {
     }
   };
 
-  const uploadVideo = async (reservationId, formData) => {
+  // Modified uploadVideo to accept progress callback
+  const uploadVideo = async (reservationId, formData, onProgress) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/reservations/${reservationId}/video`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress?.(percentCompleted);
+          }
+        },
       });
       await fetchReservations();
       return response.data;
@@ -332,16 +361,12 @@ const Reservations = () => {
     }
   };
 
-  // Delete reservation function
   const deleteReservation = async (id) => {
     if (!window.confirm('Are you sure you want to delete this reservation? This action cannot be undone.')) {
       return;
     }
     try {
-      // If reservationAPI has a delete method
       await reservationAPI.delete(id);
-      // Alternatively, use axios directly:
-      // await axios.delete(`${API_BASE_URL}/admin/reservations/${id}`);
       await fetchReservations();
       setShowDetailsModal(false);
     } catch (error) {
