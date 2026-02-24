@@ -68,7 +68,7 @@ export const serviceAPI = {
 // Reservations
 export const reservationAPI = {
   // Public (for frontend booking form)
-  create: (data) => api.post('api/reservations', data),
+  create: (data) => api.post('/reservations', data),
   getById: (id) => api.get(`/reservations/${id}`),
   
   // Admin

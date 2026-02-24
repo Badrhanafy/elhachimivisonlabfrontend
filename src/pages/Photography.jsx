@@ -29,7 +29,7 @@ const Photography = () => {
   const imageRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const rafRef = useRef(null);
- const backendurl = process.env.backendurl ;
+ const backendurl = process.env.REACT_APP_BACKEND_URL ;
   // Fetch images from API
   useEffect(() => {
     const fetchImages = async () => {
