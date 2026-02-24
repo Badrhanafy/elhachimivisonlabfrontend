@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = procces.env.backendurl;
+const API_BASE_URL = process.env.backendurl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
