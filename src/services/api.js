@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_BASE_URL = process.env.backendurl;
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL|| "https://www.elhachimivisionlab.com/api",
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
