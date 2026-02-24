@@ -31,7 +31,7 @@ const Navbar = () => {
     opponent: '',
     notes: ''
   });
-
+// comment siple for commit 
   const videoServiceOptions = [
     { 
       id: 'wide_analysis', 
