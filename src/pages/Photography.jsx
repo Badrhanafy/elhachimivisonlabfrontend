@@ -29,13 +29,13 @@ const Photography = () => {
   const imageRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const rafRef = useRef(null);
- const backendurl = process.env.REACT_APP_BACKEND_URL ;
+
   // Fetch images from API
   useEffect(() => {
     const fetchImages = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${backendurl}/images`);
+        const response = await fetch('http://localhost:8000/api/images');
         if (!response.ok) {
           throw new Error('Failed to fetch images');
         }

@@ -3,12 +3,14 @@ import axios from 'axios';
 const API_BASE_URL = process.env.backendurl;
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL||'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
 });
+console.log('the url is: '+API_BASE_URL);
+
 
 // Add authentication token to requests
 api.interceptors.request.use(
