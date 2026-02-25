@@ -236,7 +236,7 @@ const Reservations = () => {
   });
 
   const DOMAIN = 'https://elhachimivisionlab.com';
-  const API_BASE_URL = 'https://elhachimivisionlab.com'; // Adjust to your backend
+  const API_BASE_URL = 'https://server.elhachimivisionlab.com'; // Adjust to your backend
 
   useEffect(() => {
     fetchReservations();
