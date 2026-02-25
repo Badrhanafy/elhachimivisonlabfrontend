@@ -35,7 +35,7 @@ const Photography = () => {
     const fetchImages = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:8000/api/images');
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/images`);
         if (!response.ok) {
           throw new Error('Failed to fetch images');
         }
