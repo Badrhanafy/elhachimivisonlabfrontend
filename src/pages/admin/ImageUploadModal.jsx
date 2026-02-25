@@ -31,10 +31,10 @@ const ImageUploadModal = ({ reservation, onClose, onUpload }) => {
   const [downloadingSingleImage, setDownloadingSingleImage] = useState(null);
   
   const fileInputRef = useRef(null);
-
+const backendurl = process.env.REACT_APP_BACKEND_URL;
   // Create axios instance with base configuration
   const api = axios.create({
-    baseURL: 'http://localhost:8000/api',
+    baseURL: backendurl,
     headers: {
       'Accept': 'application/json',
     },
