@@ -34,8 +34,8 @@ const ImageGallery = ({ reservationId: propReservationId }) => {
     return null;
   }
 
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-  const STORAGE_URL = process.env.REACT_APP_STORAGE_URL || 'http://localhost:8000/storage';
+  const API_BASE = process.env.REACT_APP_API_URL ;
+  const STORAGE_URL = process.env.REACT_APP_STORAGE_URL;
 
   const fetchData = useCallback(async () => {
     if (!effectiveReservationId) {
