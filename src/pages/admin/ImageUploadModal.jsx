@@ -11,7 +11,14 @@ import {
   Eye,
   Download,
   FolderDown,
-  Loader2
+  Loader2,
+  Sparkles,
+  Grid,
+  List,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  Camera
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -29,9 +36,14 @@ const ImageUploadModal = ({ reservation, onClose, onUpload }) => {
   const [success, setSuccess] = useState('');
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [downloadingSingleImage, setDownloadingSingleImage] = useState(null);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [previewImage, setPreviewImage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const imagesPerPage = 12;
   
   const fileInputRef = useRef(null);
-const backendurl = process.env.REACT_APP_BACKEND_URL;
+  const backendurl = process.env.REACT_APP_BACKEND_URL;
+  
   // Create axios instance with base configuration
   const api = axios.create({
     baseURL: backendurl,
@@ -72,20 +84,20 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
     }
   };
 
+  // Pagination
+  const indexOfLastImage = currentPage * imagesPerPage;
+  const indexOfFirstImage = indexOfLastImage - imagesPerPage;
+  const currentImages = existingImages.slice(indexOfFirstImage, indexOfLastImage);
+  const totalPages = Math.ceil(existingImages.length / imagesPerPage);
+
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files);
     
-    // Validate file count
-  /*   if (files.length + selectedFiles.length > 10) {
-      setError('Maximum 10 images allowed per reservation');
-      return;
-    } */
-
     // Validate file types and sizes (8MB limit based on your controller)
     const validFiles = files.filter(file => {
       const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
       const isValidType = validTypes.includes(file.type);
-      const isValidSize = file.size <= 8 * 1024 * 1024; // 8MB (8120 in controller)
+      const isValidSize = file.size <= 8 * 1024 * 1024; // 8MB
       
       if (!isValidType) {
         setError(`File ${file.name} is not a valid image type`);
@@ -237,7 +249,6 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
     }
 
     try {
-      // Direct axios call for bulk delete
       await api.post('/admin/images/bulk-delete', { 
         image_ids: selectedImages 
       });
@@ -252,11 +263,9 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
     }
   };
 
-  // Function to update a single image caption
   const updateImageCaption = async (imageId, caption) => {
     try {
       await api.put(`/admin/images/${imageId}`, { caption });
-      // Refresh the images list
       await fetchExistingImages();
     } catch (error) {
       console.error('Error updating caption:', error);
@@ -264,7 +273,6 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
     }
   };
 
-  // Function to delete a single image
   const deleteSingleImage = async (imageId) => {
     if (!window.confirm('Delete this image?')) return;
     
@@ -279,24 +287,10 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
     }
   };
 
-  // Function to get image stats
-  const fetchImageStats = async () => {
-    try {
-      const response = await api.get(`/admin/images/stats/${reservation.id}`);
-      console.log('Image stats:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      return null;
-    }
-  };
-
-  // View full size image in new tab
   const viewFullImage = (imageUrl) => {
-    window.open(imageUrl, '_blank');
+    setPreviewImage(imageUrl);
   };
 
-  // Download single image
   const downloadSingleImage = async (image, e) => {
     e.stopPropagation();
     setDownloadingSingleImage(image.id);
@@ -320,7 +314,6 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
     }
   };
 
-  // Download all images as zip
   const downloadAllImagesAsZip = async () => {
     if (existingImages.length === 0) {
       setError('No images to download');
@@ -338,19 +331,16 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
         }
       );
       
-      // Create a download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
       
-      // Extract filename from response headers
       const contentDisposition = response.headers['content-disposition'];
       let filename = `reservation_${reservation.id}_images.zip`;
       
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename\*?=["']?([^"';]+)["']?/);
         if (filenameMatch && filenameMatch[1]) {
-          // Handle encoded filenames
           if (filenameMatch[1].startsWith("UTF-8''")) {
             filename = decodeURIComponent(filenameMatch[1].substring(7));
           } else {
@@ -362,8 +352,6 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-      
-      // Cleanup
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
       
@@ -377,7 +365,6 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
       } else if (error.response?.status === 500) {
         setError('Failed to create zip file. Please try again.');
       } else if (error.response?.data) {
-        // Try to read error message from blob
         const errorText = await error.response.data.text();
         try {
           const errorJson = JSON.parse(errorText);
@@ -394,343 +381,604 @@ const backendurl = process.env.REACT_APP_BACKEND_URL;
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+        onClick={onClose}
+      />
+      
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div>
-            <h3 className="text-xl font-bold text-gray-800">Upload Images</h3>
-            <p className="text-gray-500 text-sm">
-              Reservation #{reservation.id} • {reservation.team || 'No team'}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Main Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6">
-          {/* Upload Section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-medium text-gray-700">Upload New Images</h4>
-              <span className="text-sm text-gray-500">
-                {selectedFiles.length} of 10 selected
-              </span>
+        <div className="relative w-full max-w-6xl max-h-[90vh]">
+          {/* Glassmorphism Background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#B8E601]/20 via-black/60 to-black/80 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl" />
+          
+          {/* Main Content */}
+          <div className="relative z-10 flex flex-col h-full max-h-[90vh] overflow-hidden rounded-3xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B8E601] to-[#B8E601]/70 flex items-center justify-center shadow-lg">
+                  <Camera className="w-6 h-6 text-black" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Image Gallery</h3>
+                  <p className="text-sm text-gray-300">
+                    {reservation.team || 'Session'} • {reservation.id}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                {/* View Toggle */}
+                <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded-md transition-all ${
+                      viewMode === 'grid' 
+                        ? 'bg-gradient-to-r from-[#B8E601] to-[#B8E601]/70 text-black' 
+                        : 'text-gray-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <Grid className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded-md transition-all ${
+                      viewMode === 'list' 
+                        ? 'bg-gradient-to-r from-[#B8E601] to-[#B8E601]/70 text-black' 
+                        : 'text-gray-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
             </div>
 
-            {/* File Drop Zone */}
-            <div
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
-                ${error ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}`}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.add('border-blue-400', 'bg-blue-50');
-              }}
-              onDragLeave={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
-                handleFileSelect({ target: { files: e.dataTransfer.files } });
-              }}
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                multiple
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600 font-medium">Drop images here or click to browse</p>
-              <p className="text-gray-500 text-sm mt-1">
-                Supports JPG, PNG, GIF, WEBP • Max 8MB per image
-              </p>
-            </div>
+            {/* Main Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+              {/* Upload Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-[#B8E601]" />
+                    Upload New Images
+                  </h4>
+                  <span className="text-sm text-[#B8E601] bg-[#B8E601]/20 px-3 py-1 rounded-full border border-[#B8E601]/30">
+                    {selectedFiles.length} selected
+                  </span>
+                </div>
 
-            {/* Selected Files Preview */}
-            {selectedFiles.length > 0 && (
-              <div className="mt-6">
-                <h5 className="font-medium text-gray-700 mb-3">Selected Images</h5>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} className="border rounded-lg overflow-hidden bg-white">
-                      <div className="relative aspect-square bg-gray-100">
-                        <img
-                          src={previews[index]}
-                          alt={file.name}
-                          className="w-full h-full object-cover"
-                        />
+                {/* Enhanced Drop Zone */}
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all overflow-hidden group
+                    ${error ? 'border-rose-400/50 bg-rose-500/10' : 'border-[#B8E601]/30 hover:border-[#B8E601]'}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('border-[#B8E601]', 'bg-[#B8E601]/10');
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-[#B8E601]', 'bg-[#B8E601]/10');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-[#B8E601]', 'bg-[#B8E601]/10');
+                    handleFileSelect({ target: { files: e.dataTransfer.files } });
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#B8E601]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <div className="relative">
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#B8E601]/20 to-[#B8E601]/5 border border-[#B8E601]/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Upload className="w-8 h-8 text-[#B8E601]" />
+                    </div>
+                    <p className="text-white font-medium text-lg mb-2">
+                      Drop images here or click to browse
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      Supports JPG, PNG, GIF, WEBP • Max 8MB per image
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* Selected Files Preview */}
+                <AnimatePresence>
+                  {selectedFiles.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="space-y-3"
+                    >
+                      <h5 className="text-sm font-medium text-[#B8E601] uppercase tracking-wider">
+                        Ready to Upload
+                      </h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {selectedFiles.map((file, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="group relative bg-black/40 border border-white/10 rounded-xl overflow-hidden hover:border-[#B8E601]/30 transition-all"
+                          >
+                            <div className="relative aspect-square">
+                              <img
+                                src={previews[index]}
+                                alt={file.name}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <button
+                                onClick={() => removeFile(index)}
+                                className="absolute top-2 right-2 p-1.5 bg-rose-500/90 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-600 backdrop-blur-sm"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="p-3">
+                              <input
+                                type="text"
+                                value={captions[index]}
+                                onChange={(e) => updateCaption(index, e.target.value)}
+                                placeholder="Add caption..."
+                                className="w-full px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:border-[#B8E601]/50 focus:outline-none"
+                              />
+                              <p className="text-xs text-gray-400 mt-2 truncate">
+                                {file.name} • {(file.size / 1024 / 1024).toFixed(2)} MB
+                              </p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Existing Images Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-[#B8E601]" />
+                    Gallery ({existingImages.length})
+                  </h4>
+                  
+                  <div className="flex items-center gap-3">
+                    {existingImages.length > 0 && (
+                      <button
+                        onClick={downloadAllImagesAsZip}
+                        disabled={downloadingZip}
+                        className="px-4 py-2 bg-gradient-to-r from-[#B8E601] to-[#B8E601]/70 text-black rounded-xl font-medium hover:from-[#B8E601] hover:to-[#B8E601] transition-all flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {downloadingZip ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Preparing...
+                          </>
+                        ) : (
+                          <>
+                            <FolderDown className="w-4 h-4" />
+                            Download All
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {selectedImages.length > 0 && (
+                      <button
+                        onClick={deleteSelectedImages}
+                        className="px-4 py-2 bg-rose-500/20 text-rose-400 rounded-xl font-medium hover:bg-rose-500/30 transition-all flex items-center gap-2 border border-rose-500/30"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete ({selectedImages.length})
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {loadingExisting ? (
+                  <div className="flex flex-col items-center justify-center py-12 bg-black/40 border border-white/10 rounded-2xl">
+                    <div className="relative">
+                      <div className="w-12 h-12 border-2 border-white/20 border-t-[#B8E601] rounded-full animate-spin" />
+                    </div>
+                    <p className="mt-4 text-sm text-gray-400">Loading gallery...</p>
+                  </div>
+                ) : existingImages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 bg-black/40 border border-white/10 rounded-2xl">
+                    <ImageIcon className="w-12 h-12 text-gray-600 mb-4" />
+                    <h3 className="text-lg font-medium text-white mb-1">No images yet</h3>
+                    <p className="text-sm text-gray-400">Upload your first images above</p>
+                  </div>
+                ) : (
+                  <>
+                    {viewMode === 'grid' ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {currentImages.map((image) => (
+                          <motion.div
+                            key={image.id}
+                            layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className={`group relative bg-black/40 border rounded-xl overflow-hidden cursor-pointer transition-all
+                              ${selectedImages.includes(image.id) 
+                                ? 'border-[#B8E601] ring-2 ring-[#B8E601]/50' 
+                                : 'border-white/10 hover:border-[#B8E601]/30'}`}
+                            onClick={() => toggleImageSelect(image.id)}
+                          >
+                            <div className="relative aspect-square">
+                              <img
+                                src={image.url}
+                                alt={image.caption || image.filename}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23333"/><text x="50" y="50" font-size="10" text-anchor="middle" dy=".3em" fill="%23666">Error</text></svg>';
+                                }}
+                              />
+                              
+                              {/* Overlay with actions */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="absolute top-2 right-2 flex gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      viewFullImage(image.url);
+                                    }}
+                                    className="p-1.5 bg-black/60 backdrop-blur-sm rounded-lg hover:bg-[#B8E601]/80 hover:text-black transition-all"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => downloadSingleImage(image, e)}
+                                    disabled={downloadingSingleImage === image.id}
+                                    className="p-1.5 bg-black/60 backdrop-blur-sm rounded-lg hover:bg-[#B8E601]/80 hover:text-black transition-all"
+                                  >
+                                    {downloadingSingleImage === image.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Download className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteSingleImage(image.id);
+                                    }}
+                                    className="p-1.5 bg-black/60 backdrop-blur-sm rounded-lg hover:bg-rose-500 hover:text-white transition-all"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              {selectedImages.includes(image.id) && (
+                                <div className="absolute top-2 left-2">
+                                  <div className="w-6 h-6 bg-[#B8E601] rounded-lg flex items-center justify-center">
+                                    <CheckCircle className="w-4 h-4 text-black" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="p-3">
+                              <input
+                                type="text"
+                                defaultValue={image.caption || ''}
+                                placeholder="Add caption..."
+                                className="w-full px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-white placeholder-gray-500 focus:border-[#B8E601]/50 focus:outline-none"
+                                onClick={(e) => e.stopPropagation()}
+                                onBlur={(e) => {
+                                  if (e.target.value !== (image.caption || '')) {
+                                    updateImageCaption(image.id, e.target.value);
+                                  }
+                                }}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.target.blur();
+                                  }
+                                }}
+                              />
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs text-gray-400">
+                                  {new Date(image.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      // List View
+                      <div className="bg-black/40 border border-white/10 rounded-2xl overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-black/60 border-b border-white/10">
+                              <tr>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#B8E601] uppercase">Image</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#B8E601] uppercase">Caption</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#B8E601] uppercase">Date</th>
+                                <th className="px-6 py-4 text-right text-xs font-semibold text-[#B8E601] uppercase">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/10">
+                              {existingImages.map((image) => (
+                                <motion.tr
+                                  key={image.id}
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  className="hover:bg-[#B8E601]/5 transition-colors cursor-pointer"
+                                  onClick={() => toggleImageSelect(image.id)}
+                                >
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/40 border border-white/10">
+                                        <img
+                                          src={image.url}
+                                          alt={image.caption}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                      <div>
+                                        <div className="font-medium text-white">{image.filename || 'Image'}</div>
+                                        <div className="text-xs text-gray-400">ID: {image.id}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <input
+                                      type="text"
+                                      defaultValue={image.caption || ''}
+                                      placeholder="No caption"
+                                      className="px-3 py-1 bg-black/40 border border-white/10 rounded text-sm text-white placeholder-gray-500 focus:border-[#B8E601]/50 focus:outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      onBlur={(e) => {
+                                        if (e.target.value !== (image.caption || '')) {
+                                          updateImageCaption(image.id, e.target.value);
+                                        }
+                                      }}
+                                    />
+                                  </td>
+                                  <td className="px-6 py-4 text-gray-300 text-sm">
+                                    {new Date(image.created_at).toLocaleDateString()}
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          viewFullImage(image.url);
+                                        }}
+                                        className="p-2 text-[#B8E601] hover:bg-[#B8E601]/10 rounded-lg transition-all"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => downloadSingleImage(image, e)}
+                                        disabled={downloadingSingleImage === image.id}
+                                        className="p-2 text-[#B8E601] hover:bg-[#B8E601]/10 rounded-lg transition-all"
+                                      >
+                                        {downloadingSingleImage === image.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <Download className="w-4 h-4" />
+                                        )}
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          deleteSingleImage(image.id);
+                                        }}
+                                        className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                      {selectedImages.includes(image.id) && (
+                                        <CheckCircle className="w-5 h-5 text-[#B8E601]" />
+                                      )}
+                                    </div>
+                                  </td>
+                                </motion.tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 mt-6">
                         <button
-                          onClick={() => removeFile(index)}
-                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                          className="p-2 bg-black/40 border border-white/10 rounded-lg text-gray-400 hover:text-[#B8E601] hover:border-[#B8E601]/30 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                              currentPage === page
+                                ? 'bg-gradient-to-r from-[#B8E601] to-[#B8E601]/70 text-black'
+                                : 'bg-black/40 border border-white/10 text-gray-400 hover:text-[#B8E601] hover:border-[#B8E601]/30'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                          className="p-2 bg-black/40 border border-white/10 rounded-lg text-gray-400 hover:text-[#B8E601] hover:border-[#B8E601]/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ChevronRight className="w-5 h-5" />
                         </button>
                       </div>
-                      <div className="p-3">
-                        <input
-                          type="text"
-                          value={captions[index]}
-                          onChange={(e) => updateCaption(index, e.target.value)}
-                          placeholder="Add a caption..."
-                          className="w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <p className="text-xs text-gray-500 mt-1 truncate">
-                          {file.name} • {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Existing Images Section */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-medium text-gray-700">
-                Existing Images ({existingImages.length})
-              </h4>
-              <div className="flex space-x-2">
-                {existingImages.length > 0 && (
-                  <button
-                    onClick={downloadAllImagesAsZip}
-                    disabled={downloadingZip || existingImages.length === 0}
-                    className={`px-3 py-1 text-sm rounded-lg flex items-center transition-colors
-                      ${downloadingZip || existingImages.length === 0
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700'
-                      }`}
-                  >
-                    {downloadingZip ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                        Preparing...
-                      </>
-                    ) : (
-                      <>
-                        <FolderDown className="w-4 h-4 mr-1" />
-                        Download All
-                      </>
                     )}
-                  </button>
-                )}
-                {selectedImages.length > 0 && (
-                  <button
-                    onClick={deleteSelectedImages}
-                    className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 flex items-center"
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Delete Selected ({selectedImages.length})
-                  </button>
+                  </>
                 )}
               </div>
             </div>
 
-            {loadingExisting ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="text-gray-500 mt-2">Loading images...</p>
-              </div>
-            ) : existingImages.length === 0 ? (
-              <div className="text-center py-8 border rounded-lg bg-gray-50">
-                <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500">No images uploaded yet</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {existingImages.map((image) => (
-                  <div
-                    key={image.id}
-                    className={`border rounded-lg overflow-hidden bg-white cursor-pointer transition-all
-                      ${selectedImages.includes(image.id) ? 'ring-2 ring-blue-500' : ''}`}
-                    onClick={() => toggleImageSelect(image.id)}
-                  >
-                    <div className="relative aspect-square bg-gray-100">
-                      <img
-                        src={image.url}
-                        alt={image.caption || image.filename}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50" y="50" font-size="10" text-anchor="middle" dy=".3em" fill="%239ca3af">Image</text></svg>';
-                        }}
-                      />
-                      <div 
-                        className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          viewFullImage(image.url);
-                        }}
-                      >
-                        <Eye className="w-6 h-6 text-white" />
-                      </div>
-                      {selectedImages.includes(image.id) && (
-                        <div className="absolute top-2 left-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                          <CheckCircle className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      {/* Individual delete button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteSingleImage(image.id);
-                        }}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="p-2">
-                      <input
-                        type="text"
-                        defaultValue={image.caption || ''}
-                        placeholder="Add caption..."
-                        className="w-full px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-1"
-                        onClick={(e) => e.stopPropagation()}
-                        onBlur={(e) => {
-                          if (e.target.value !== (image.caption || '')) {
-                            updateImageCaption(image.id, e.target.value);
-                          }
-                        }}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.target.blur();
-                          }
-                        }}
-                      />
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs text-gray-500">
-                          {new Date(image.created_at).toLocaleDateString()}
-                        </span>
-                        <div className="flex space-x-1">
-                          <button
-                            onClick={(e) => downloadSingleImage(image, e)}
-                            disabled={downloadingSingleImage === image.id}
-                            className="text-blue-500 hover:text-blue-600"
-                            title="Download"
-                          >
-                            {downloadingSingleImage === image.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Download className="w-3 h-3" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+            {/* Footer */}
+            <div className="border-t border-white/10 p-6 bg-black/40">
+              {/* Progress Bar */}
+              {uploading && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>Uploading to gallery...</span>
+                    <span className="text-[#B8E601]">{uploadProgress}%</span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+                  <div className="w-full bg-black/40 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-[#B8E601] to-[#B8E601]/70 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
 
-        {/* Footer */}
-        <div className="border-t p-6 bg-gray-50">
-          {/* Progress Bar */}
-          {uploading && (
-            <div className="mb-4">
-              <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>Uploading...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
+              {/* Messages */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center justify-between bg-rose-500/20 text-rose-400 p-4 rounded-xl border border-rose-500/30 mb-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                    <button onClick={() => setError('')} className="hover:bg-rose-500/10 p-1 rounded">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </motion.div>
+                )}
+
+                {success && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center justify-between bg-[#B8E601]/20 text-[#B8E601] p-4 rounded-xl border border-[#B8E601]/30 mb-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                      <span>{success}</span>
+                    </div>
+                    <button onClick={() => setSuccess('')} className="hover:bg-[#B8E601]/10 p-1 rounded">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 bg-white/5 text-white rounded-xl font-medium hover:bg-white/10 transition-all"
+                  disabled={uploading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading || selectedFiles.length === 0}
+                  className={`px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2
+                    ${uploading || selectedFiles.length === 0
+                      ? 'bg-[#B8E601]/20 text-[#B8E601]/50 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-[#B8E601] to-[#B8E601]/70 text-black hover:from-[#B8E601] hover:to-[#B8E601]'
+                    }`}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Uploading {uploadProgress}%...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5" />
+                      Upload {selectedFiles.length} Image{selectedFiles.length !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-          )}
-
-          {/* Messages */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="flex items-center justify-between bg-red-50 text-red-700 p-3 rounded-lg mb-4"
-              >
-                <div className="flex items-center">
-                  <AlertCircle className="w-5 h-5 mr-2" />
-                  <span>{error}</span>
-                </div>
-                <button onClick={() => setError('')}>
-                  <X className="w-4 h-4" />
-                </button>
-              </motion.div>
-            )}
-
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="flex items-center justify-between bg-green-50 text-green-700 p-3 rounded-lg mb-4"
-              >
-                <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  <span>{success}</span>
-                </div>
-                <button onClick={() => setSuccess('')}>
-                  <X className="w-4 h-4" />
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              disabled={uploading}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleUpload}
-              disabled={uploading || selectedFiles.length === 0}
-              className={`px-4 py-2 rounded-lg transition-colors flex items-center
-                ${uploading || selectedFiles.length === 0
-                  ? 'bg-blue-300 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white'
-                }`}
-            >
-              {uploading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload ({selectedFiles.length})
-                </>
-              )}
-            </button>
           </div>
         </div>
+
+        {/* Full Image Preview Modal */}
+        <AnimatePresence>
+          {previewImage && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[60]"
+                onClick={() => setPreviewImage(null)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="fixed inset-0 z-[61] flex items-center justify-center p-4"
+                onClick={() => setPreviewImage(null)}
+              >
+                <div className="relative max-w-5xl max-h-[90vh">
+                  <img
+                    src={previewImage}
+                    alt="Full size preview"
+                    className="max-w-full max-h-[90vh] object-contain rounded-2xl"
+                  />
+                  <button
+                    onClick={() => setPreviewImage(null)}
+                    className="absolute top-4 right-4 p-2 bg-black/60 backdrop-blur-sm rounded-xl hover:bg-[#B8E601]/80 hover:text-black transition-all"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </motion.div>
-    </div>
+    </AnimatePresence>
   );
 };
 
