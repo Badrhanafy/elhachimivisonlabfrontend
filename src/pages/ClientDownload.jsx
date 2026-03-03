@@ -35,7 +35,7 @@ const ImageGallery = ({ reservationId: propReservationId }) => {
   }
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://server.elhachimivisionlab.com/api'; ;
-  const STORAGE_URL = process.env.REACT_APP_STORAGE_URL;
+  const STORAGE_URL = process.env.REACT_APP_STORAGE_URL||'https://server.elhachimivisionlab.com/storage';
 
   const fetchData = useCallback(async () => {
     if (!effectiveReservationId) {
