@@ -36,14 +36,7 @@ const BrandLogos = () => {
       width: 150,
       height: 75
     },
-    { 
-      id: 4, 
-      name: 'EASF', 
-      whiteUrl: '/logos/easfwhite.png',
-      colorUrl: '/logos/easf.png',
-      width: 170,
-      height: 80
-    },
+    
     { 
       id: 5, 
       name: 'Chada', 

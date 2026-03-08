@@ -16,6 +16,8 @@ import SportAnalysis from './pages/SportAnalysis';
 import Test from './pages/test';
 import DataAnalytics from './pages/admin/DataAnalytics';
 import About from './pages/About';
+import AdminLogin from './pages/admin/AdminLogin';
+import Contact from './pages/Contact';
 
 // lazy admin
 const AdminLayout = React.lazy(() => import('./components/layout/AdminLayout'));
@@ -60,8 +62,10 @@ function App() {
           <Route path='/photography' element={<Photography/>}/>
           <Route path='/:username/:id/results' element={<ImageGallery/>}/>
           <Route path='/About' element={<About/>}/>
+          <Route path='/login' element={<AdminLogin/>}/>
+          <Route path='/contact' element={<Contact/>}/>
         </Routes>
-
+     
       </React.Suspense>
     </BrowserRouter>
   );

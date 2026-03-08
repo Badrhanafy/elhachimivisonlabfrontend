@@ -7,6 +7,7 @@ import QuoteSection from './QuoteSection';
 import CTASection from './CTASection';
 import Footer from './Footer';
 import Navbar from '../components/Navbar';
+import GlobeMap from '../components/Globe';
 import ClientsSectionWithRealLogos from './ClientsSection';
 import ServicesSection from './ServicesSection';
 import VideoSection from './Video';
@@ -52,6 +53,7 @@ const Homepage = () => {
         
         <CTASection />
         <Team/>
+        <GlobeMap/>
         <Footer />
       </div>
     </div>
