@@ -268,6 +268,9 @@ const Navbar = () => {
                   <span>Get Started</span>
                   <FiChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </button>
+                <button onClick={()=>{
+                  window.location.href="/admin"
+                }}>admin</button>
               </motion.div>
             </div>
 
