@@ -106,7 +106,7 @@ const Images = () => {
     
     try {
       // Implement bulk delete API call
-      // await Promise.all(selectedImages.map(id => reservationAPI.deleteImage(id)));
+       await Promise.all(selectedImages.map(id => reservationAPI.deleteImage(id)));
       setSelectedImages([]);
       setSuccess(`${selectedImages.length} images deleted successfully!`);
       fetchReservationsWithImages();
