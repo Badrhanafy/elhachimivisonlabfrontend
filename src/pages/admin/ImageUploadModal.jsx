@@ -150,88 +150,120 @@ const ImageUploadModal = ({ reservation, onClose, onUpload }) => {
     setCaptions(newCaptions);
   };
 
-  const handleUpload = async () => {
-    if (selectedFiles.length === 0) {
-      setError('Please select at least one image to upload');
-      return;
-    }
+const handleUpload = async () => {
+  if (selectedFiles.length === 0) {
+    setError('Please select images');
+    return;
+  }
+
+  setUploading(true);
+  setError('');
+  setSuccess('');
+  setUploadProgress(0);
+
+  const totalFiles = selectedFiles.length;
+
+  // ⚡ adaptive config (focus speed)
+  let batchSize = 10;
+  let parallel = 2;
+
+  if (totalFiles < 50) {
+    batchSize = 15;
+    parallel = 2;
+  } else if (totalFiles < 200) {
+    batchSize = 10;
+    parallel = 2;
+  } else {
+    batchSize = 8;
+    parallel = 2;
+  }
+
+  let uploadedCount = 0;
+
+  const uploadBatch = async (batch, startIndex, retry = 1) => {
+    const formData = new FormData();
+
+    batch.forEach((file, index) => {
+      formData.append('images[]', file);
+
+      const captionIndex = startIndex + index;
+      if (captions[captionIndex]) {
+        formData.append('captions[]', captions[captionIndex]);
+      }
+    });
 
     try {
-      setUploading(true);
-      setError('');
-      setSuccess('');
-      
-      const formData = new FormData();
-      
-      // Append each file
-      selectedFiles.forEach((file, index) => {
-        formData.append('images[]', file);
-        if (captions[index]) {
-          formData.append('captions[]', captions[index]);
-        }
-      });
-
-      // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      // Direct axios call to upload images
-      const response = await api.post(
+      await api.post(
         `/admin/images/reservation/${reservation.id}`,
         formData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
+          onUploadProgress: (progressEvent) => {
+            const percent = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+
+            const globalProgress = Math.round(
+              ((uploadedCount + (percent / 100) * batch.length) / totalFiles) * 100
+            );
+
+            setUploadProgress(globalProgress);
+          },
         }
       );
-      
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-      
-      setSuccess(`${selectedFiles.length} image(s) uploaded successfully!`);
-      setUploadedImages(response.data.images);
-      
-      // Clear selections
-      setSelectedFiles([]);
-      setPreviews([]);
-      setCaptions([]);
-      
-      // Refresh existing images
-      await fetchExistingImages();
-      
-      // Call onUpload callback
-      if (onUpload) {
-        onUpload();
-      }
-      
-      // Reset progress after delay
-      setTimeout(() => {
-        setUploadProgress(0);
-      }, 2000);
-      
-    } catch (error) {
-      console.error('Upload error:', error);
-      
-      // Handle validation errors from Laravel
-      if (error.response?.data?.errors) {
-        const errors = error.response.data.errors;
-        const errorMessages = Object.values(errors).flat();
-        setError(errorMessages.join(', '));
+    } catch (err) {
+      if (retry > 0) {
+        return uploadBatch(batch, startIndex, retry - 1);
       } else {
-        setError(error.response?.data?.message || 'Upload failed. Please try again.');
+        throw err;
       }
-    } finally {
-      setUploading(false);
     }
   };
+
+  try {
+    let promises = [];
+
+    for (let i = 0; i < totalFiles; i += batchSize) {
+      const batch = selectedFiles.slice(i, i + batchSize);
+
+      const promise = uploadBatch(batch, i).then(() => {
+        uploadedCount += batch.length;
+      });
+
+      promises.push(promise);
+
+      // 🚀 run parallel batches (speed boost)
+      if (promises.length === parallel) {
+        await Promise.all(promises);
+        promises = [];
+      }
+    }
+
+    // باقي batches
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
+
+    setSuccess(`${totalFiles} images uploaded successfully 🚀`);
+
+    setSelectedFiles([]);
+    setPreviews([]);
+    setCaptions([]);
+
+    await fetchExistingImages();
+    if (onUpload) onUpload();
+
+    setTimeout(() => setUploadProgress(0), 2000);
+
+  } catch (error) {
+    console.error(error);
+    setError('Upload failed, some images may not be uploaded');
+  } finally {
+    setUploading(false);
+  }
+};
 
   const toggleImageSelect = (imageId) => {
     setSelectedImages(prev => 
