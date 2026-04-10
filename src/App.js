@@ -18,6 +18,7 @@ import DataAnalytics from './pages/admin/DataAnalytics';
 import About from './pages/About';
 import AdminLogin from './pages/admin/AdminLogin';
 import Contact from './pages/Contact';
+import Portfolio from './potfolio/portfolio';
 
 // lazy admin
 const AdminLayout = React.lazy(() => import('./components/layout/AdminLayout'));
@@ -52,11 +53,12 @@ function App() {
             <Route path="reservations" element={<Reservations />} />
             <Route path="reservations/:id" element={<ReservationDetail />} />
             <Route path="images" element={<Images />} />
-            <Route path="services" element={<ServicesManage />} /> ✅
+            <Route path="services" element={<ServicesManage />} />
+             ✅
 
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
-
+         <Route path="portfolio" element={<Portfolio />} />
           {/* Global fallback */}
           {/* <Route path="*" element={<Navigate to="/" />} /> */}
           <Route path='/photography' element={<Photography/>}/>

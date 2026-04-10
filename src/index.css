@@ -65,6 +65,10 @@
   font-family: "arabic";
   src: url('../public/fonts/arabicfont2.ttf');
 }
+@font-face {
+  font-family: "ae_arab";
+  src: url('../public/fonts/arabicfont.ttf');
+}
 
 .texts{
   font-family: "font1";
